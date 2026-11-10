@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+backend/.cache/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Challenge brief PDFs (ENAM's documents, not ours to republish)
+ENAM_*.pdf
+
+# Local data-check output
+backend/data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploaded filing PDFs (large; re-downloadable)
+backend/docs_inbox/

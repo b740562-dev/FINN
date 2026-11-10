@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FINN Style Options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #d9dbe0; font-family: Inter, system-ui, sans-serif; padding: 24px 16px 48px; }
+  .page-title { text-align: center; font-weight: 600; color: #2a2d34; margin-bottom: 4px; }
+  .page-sub { text-align: center; color: #5b606b; font-size: 13px; margin-bottom: 20px; }
+  .row { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; }
+  .opt { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .opt-label { font-weight: 600; color: #2a2d34; font-size: 14px; }
+  .phone { width: 375px; max-width: 100%; height: 812px; border-radius: 40px; overflow: hidden; position: relative;
+           box-shadow: 0 20px 50px rgba(0,0,0,.25), 0 0 0 10px #111; display: flex; flex-direction: column; }
+  .scroll { flex: 1; overflow-y: auto; padding-bottom: 130px; }
+  .sample { font-size: 10px; text-align: center; padding: 3px; letter-spacing: .04em; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ============ A: TERMINAL (dark) ============ */
+  .dark { background: #0a0c0f; color: #e6e8eb; }
+  .dark .sample { background: #2a2210; color: #f0b43c; }
+  .dark .status { display:flex; justify-content:space-between; padding: 14px 24px 6px; font-size: 13px; font-weight: 600; }
+  .dark header { padding: 6px 16px 10px; }
+  .dark .brand { display:flex; align-items:baseline; justify-content:space-between; }
+  .dark .logo { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 20px; letter-spacing: .12em; }
+  .dark .logo b { color: #f0b43c; }
+  .dark .when { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7c838f; }
+  .dark .seg { display:flex; gap: 6px; margin-top: 12px; align-items:center; }
+  .dark .seg span { font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 5px 10px; border: 1px solid #262b33; border-radius: 6px; color: #9aa1ad; }
+  .dark .seg span.on { background: #f0b43c; color: #0a0c0f; border-color: #f0b43c; font-weight: 700; }
+  .dark .seg .asof { margin-left: auto; border-style: dashed; }
+  .dark .pulse { margin: 4px 16px 12px; padding: 12px; border: 1px solid #1d2128; border-radius: 10px; background: #0f1216; }
+  .dark .pulse .v { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; }
+  .dark .pulse .d { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #3ddc84; margin-left: 8px; }
+  .dark .pulse .counts { display:flex; gap: 14px; margin-top: 8px; font-size: 11px; color: #9aa1ad; }
+  .dark .pulse .counts b { color: #e6e8eb; font-family: 'JetBrains Mono', monospace; }
+  .dark .sec { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #6b7280; letter-spacing: .14em; padding: 6px 16px; }
+  .dark .card { margin: 0 12px 10px; padding: 12px; background: #11151a; border: 1px solid #1d2128; border-left: 3px solid #f0b43c; border-radius: 8px; }
+  .dark .card.alert { border-left-color: #3ddc84; }
+  .dark .card.mgmt { border-left-color: #6ea8fe; }
+  .dark .card.ma { border-left-color: #c58af9; }
+  .dark .ch { display:flex; justify-content:space-between; align-items:center; }
+  .dark .tk { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; }
+  .dark .tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; padding: 2px 6px; border-radius: 4px; background: #2a2210; color: #f0b43c; margin-left: 6px; letter-spacing: .08em; }
+  .dark .alert .tag { background: #0f2a1b; color: #3ddc84; }
+  .dark .mgmt .tag { background: #0f1e33; color: #6ea8fe; }
+  .dark .ma .tag { background: #24143a; color: #c58af9; }
+  .dark .src { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #6b7280; }
+  .dark .head { font-size: 13px; margin-top: 6px; color: #cfd3d9; }
+  .dark table { width: 100%; border-collapse: collapse; margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; }
+  .dark th { text-align: right; color: #6b7280; font-weight: 400; font-size: 10px; padding: 3px 0; }
+  .dark th:first-child, .dark td:first-child { text-align: left; }
+  .dark td { text-align: right; padding: 4px 0; border-top: 1px solid #1a1e24; }
+  .dark .up { color: #3ddc84; } .dark .dn { color: #ff6b6b; }
+  .dark .take { margin-top: 8px; font-size: 12px; color: #9aa1ad; }
+  .dark .take b { color: #e6e8eb; font-weight: 600; }
+  .dark .why { display:inline-block; margin-top: 8px; font-size: 10px; color: #7c838f; border: 1px solid #262b33; border-radius: 20px; padding: 2px 8px; }
+  .dark .person { display:flex; gap: 10px; margin-top: 8px; align-items:center; }
+  .dark .av { width: 34px; height: 34px; border-radius: 50%; background: #1d2a3d; color: #6ea8fe; display:flex; align-items:center; justify-content:center; font-weight: 700; font-size: 12px; }
+  .dark .pn { font-weight: 600; font-size: 13px; }
+  .dark .pb { font-size: 11.5px; color: #9aa1ad; line-height: 1.4; }
+  .dark .metrics { display:flex; gap: 14px; margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
+  .dark .metrics div { font-size: 10px; color: #6b7280; }
+  .dark .metrics b { display:block; font-size: 15px; color: #e6e8eb; }
+  .dark .routine { margin: 4px 12px; padding: 10px 12px; border: 1px dashed #262b33; border-radius: 8px; font-size: 12px; color: #7c838f; display:flex; justify-content:space-between; }
+  .dark .ask { position: absolute; left: 12px; right: 12px; bottom: 66px; background: #151a20; border: 1px solid #2a3039; border-radius: 12px; padding: 12px 14px; display:flex; justify-content:space-between; font-size: 13px; color: #7c838f; }
+  .dark .ask .mic { color: #f0b43c; }
+  .dark nav { position: absolute; left:0; right:0; bottom:0; height: 58px; background: #0a0c0f; border-top: 1px solid #1d2128; display:flex; justify-content: space-around; align-items:center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #6b7280; letter-spacing: .08em; }
+  .dark nav .on { color: #f0b43c; }
+
+  /* ============ B: EDITORIAL (light) ============ */
+  .light { background: #f6f1e7; color: #1b1a17; font-family: 'Source Serif 4', Georgia, serif; }
+  .light .sample { background: #ead9c4; color: #7a2e1f; font-family: Inter, sans-serif; }
+  .light .status { display:flex; justify-content:space-between; padding: 14px 24px 6px; font-size: 13px; font-weight: 600; font-family: Inter, sans-serif; }
+  .light header { padding: 8px 18px 0; text-align: center; }
+  .light .logo { font-family: Fraunces, serif; font-size: 34px; font-weight: 700; letter-spacing: -.01em; line-height: 1; }
+  .light .rule { border-top: 2px solid #1b1a17; border-bottom: 1px solid #1b1a17; height: 5px; margin: 8px 0 6px; }
+  .light .edition { display:flex; justify-content:space-between; font-family: Inter, sans-serif; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #5d574c; }
+  .light .seg { display:flex; justify-content:center; gap: 16px; margin: 10px 0 4px; font-family: Inter, sans-serif; font-size: 12px; color: #8a8273; }
+  .light .seg .on { color: #1b1a17; font-weight: 700; border-bottom: 2px solid #7a2e1f; padding-bottom: 2px; }
+  .light .lede { margin: 10px 18px 6px; padding: 12px 0; border-bottom: 1px solid #d9cfbd; }
+  .light .lede h2 { font-family: Fraunces, serif; font-size: 22px; font-weight: 500; line-height: 1.2; }
+  .light .lede p { font-family: Inter, sans-serif; font-size: 12px; color: #5d574c; margin-top: 6px; }
+  .light .lede .num { font-family: Inter, sans-serif; font-weight: 600; color: #1b1a17; }
+  .light .lede .up { color: #2e6b3a; }
+  .light .sec { font-family: Inter, sans-serif; font-size: 10px; letter-spacing: .16em; color: #7a2e1f; font-weight: 700; padding: 12px 18px 4px; }
+  .light .card { margin: 0 18px; padding: 12px 0 14px; border-bottom: 1px solid #d9cfbd; }
+  .light .kicker { font-family: Inter, sans-serif; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8a8273; display:flex; justify-content:space-between; }
+  .light .kicker b { color: #7a2e1f; }
+  .light h3 { font-family: Fraunces, serif; font-size: 18px; font-weight: 500; line-height: 1.25; margin-top: 4px; }
+  .light table { width: 100%; border-collapse: collapse; margin-top: 8px; font-family: Inter, sans-serif; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .light th { text-align: right; font-weight: 500; font-size: 10px; color: #8a8273; padding: 3px 0; border-bottom: 1px solid #1b1a17; }
+  .light th:first-child, .light td:first-child { text-align: left; }
+  .light td { text-align: right; padding: 5px 0; border-bottom: 1px solid #e6dccb; }
+  .light .up { color: #2e6b3a; } .light .dn { color: #a3321f; }
+  .light .take { margin-top: 8px; font-size: 13.5px; line-height: 1.45; color: #3a362f; font-style: italic; }
+  .light .why { margin-top: 8px; font-family: Inter, sans-serif; font-size: 10.5px; color: #8a8273; }
+  .light .why::before { content: "Why you're seeing this: "; color: #5d574c; font-weight: 600; }
+  .light .bio { margin-top: 6px; font-size: 13.5px; line-height: 1.45; color: #3a362f; }
+  .light .metrics { display:flex; gap: 18px; margin-top: 8px; font-family: Inter, sans-serif; }
+  .light .metrics div { font-size: 10px; color: #8a8273; text-transform: uppercase; letter-spacing: .08em; }
+  .light .metrics b { display:block; font-size: 17px; color: #1b1a17; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+  .light .routine { margin: 10px 18px; font-family: Inter, sans-serif; font-size: 12px; color: #5d574c; display:flex; justify-content:space-between; }
+  .light .ask { position: absolute; left: 14px; right: 14px; bottom: 66px; background: #fffdf8; border: 1px solid #1b1a17; border-radius: 2px; padding: 12px 14px; display:flex; justify-content:space-between; font-size: 14px; color: #8a8273; font-style: italic; box-shadow: 3px 3px 0 #1b1a17; }
+  .light .ask .mic { font-style: normal; color: #7a2e1f; }
+  .light nav { position: absolute; left:0; right:0; bottom:0; height: 58px; background: #f6f1e7; border-top: 1px solid #1b1a17; display:flex; justify-content: space-around; align-items:center; font-family: Inter, sans-serif; font-size: 11px; color: #8a8273; }
+  .light nav .on { color: #1b1a17; font-weight: 700; }
+</style>
+</head>
+<body>
+<h1 class="page-title">FINN: home feed, two directions</h1>
+<p class="page-sub">Same content, same layout logic. Pick the look (or mix the parts you like). All numbers and events are made up for layout only.</p>
+
+<div class="row">
+
+<!-- ===================== OPTION A ===================== -->
+<div class="opt">
+<div class="opt-label">A · Terminal (dark, dense)</div>
+<div class="phone dark">
+  <div class="sample">SAMPLE DATA, LAYOUT ONLY</div>
+  <div class="status"><span>9:41</span><span>●●● 5G ▮</span></div>
+  <div class="scroll">
+    <header>
+      <div class="brand"><span class="logo">FINN<b>.</b></span><span class="when">WED 11 NOV · POST-CLOSE</span></div>
+      <div class="seg"><span class="on">24H</span><span>7D</span><span>30D</span><span>CUSTOM</span><span class="asof">as of 11/11 ▾</span></div>
+    </header>
+
+    <div class="pulse">
+      <span class="v num">₹48.62L</span><span class="d num">▲ +0.84% · +₹40,520</span>
+      <div class="counts"><span><b>3</b> matter</span><span><b>2</b> alerts</span><span><b>14</b> routine hidden</span></div>
+    </div>
+
+    <div class="sec">── WHAT MATTERS</div>
+
+    <div class="card">
+      <div class="ch"><span><span class="tk">INFY</span><span class="tag">RESULTS</span></span><span class="src">BSE · 16:42</span></div>
+      <div class="head">Q2 FY27 consolidated · ₹ crore</div>
+      <table class="num">
+        <tr><th></th><th>Q2 FY27</th><th>QoQ</th><th>YoY</th></tr>
+        <tr><td>Revenue</td><td>44,490</td><td class="up">+3.1%</td><td class="up">+8.4%</td></tr>
+        <tr><td>EBITDA</td><td>10,870</td><td class="up">+2.2%</td><td class="up">+6.0%</td></tr>
+        <tr><td>PBT</td><td>9,810</td><td class="up">+0.9%</td><td class="up">+5.1%</td></tr>
+        <tr><td>PAT</td><td>7,240</td><td class="dn">−1.2%</td><td class="up">+4.8%</td></tr>
+      </table>
+      <div class="take"><b>Margin −20bp QoQ to 24.4%.</b> Top line grew faster than profit for the 2nd straight quarter.</div>
+      <span class="why">7.5% of your book · results</span>
+    </div>
+
+    <div class="card mgmt">
+      <div class="ch"><span><span class="tk">HDFCBANK</span><span class="tag">MGMT</span></span><span class="src">NSE · 14:05</span></div>
+      <div class="head">New CFO appointed, effective 1 Dec</div>
+      <div class="person">
+        <div class="av">RI</div>
+        <div><div class="pn">Rohan K. Iyer</div>
+        <div class="pb">Ex-Group Treasurer at a large private bank · 19 yrs · CA, IIM-B</div></div>
+      </div>
+      <span class="why">profile: filing + web · 9.1% of your book</span>
+    </div>
+
+    <div class="card alert">
+      <div class="ch"><span><span class="tk">DIXON</span><span class="tag">VOL SPIKE</span></span><span class="src">EOD</span></div>
+      <div class="metrics num">
+        <div>VOLUME<b>3.4×</b></div><div>CLOSE<b class="up">+6.2%</b></div><div>YOUR P&amp;L<b class="up">+₹18.4K</b></div>
+      </div>
+      <span class="why">your rule: vol &gt; 2× 20D · move &gt; 5%</span>
+    </div>
+
+    <div class="card ma">
+      <div class="ch"><span><span class="tk">LT</span><span class="tag">M&amp;A</span></span><span class="src">BSE · 11:20</span></div>
+      <div class="head">Acquires 100% of a green-hydrogen EPC firm for ₹420 cr (~0.1% of mcap). Small, strategic.</div>
+    </div>
+
+    <div class="routine"><span>▸ 14 routine filings</span><span>ESOP · compliance · AGM</span></div>
+  </div>
+  <div class="ask"><span>Ask FINN: "Did Titan hit FY27 guidance?"</span><span class="mic">◉</span></div>
+  <nav><span class="on">TODAY</span><span>ALERTS·2</span><span>RESEARCH</span><span>YOU</span></nav>
+</div>
+</div>
+
+<!-- ===================== OPTION B ===================== -->
+<div class="opt">
+<div class="opt-label">B · Editorial (light, calm)</div>
+<div class="phone light">
+  <div class="sample">SAMPLE DATA, LAYOUT ONLY</div>
+  <div class="status"><span>9:41</span><span>●●● 5G ▮</span></div>
+  <div class="scroll">
+    <header>
+      <div class="logo">Finn</div>
+      <div class="rule"></div>
+      <div class="edition"><span>Wednesday, 11 Nov 2026</span><span>Evening edition</span></div>
+      <div class="seg"><span class="on">24 hours</span><span>7 days</span><span>30 days</span><span>Custom</span><span>As of ▾</span></div>
+    </header>
+
+    <div class="lede">
+      <h2>Three things moved your portfolio today. Everything else can wait.</h2>
+      <p>Book <span class="num">₹48.62L</span> · <span class="num up">+0.84%</span> · 2 alerts · 14 routine filings set aside</p>
+    </div>
+
+    <div class="sec">WHAT MATTERS</div>
+
+    <div class="card">
+      <div class="kicker"><span><b>Results</b> · Infosys</span><span>BSE 4:42 pm</span></div>
+      <h3>Revenue up 8% on the year; profit lags as margins slip</h3>
+      <table>
+        <tr><th>₹ cr, Q2 FY27</th><th>Actual</th><th>QoQ</th><th>YoY</th></tr>
+        <tr><td>Revenue</td><td>44,490</td><td class="up">+3.1%</td><td class="up">+8.4%</td></tr>
+        <tr><td>EBITDA</td><td>10,870</td><td class="up">+2.2%</td><td class="up">+6.0%</td></tr>
+        <tr><td>PBT</td><td>9,810</td><td class="up">+0.9%</td><td class="up">+5.1%</td></tr>
+        <tr><td>PAT</td><td>7,240</td><td class="dn">−1.2%</td><td class="up">+4.8%</td></tr>
+      </table>
+      <p class="take">EBITDA margin eased 20bp to 24.4%, the second quarter running where sales outpaced profit.</p>
+      <p class="why">results · 7.5% of your portfolio</p>
+    </div>
+
+    <div class="card">
+      <div class="kicker"><span><b>Management</b> · HDFC Bank</span><span>NSE 2:05 pm</span></div>
+      <h3>A treasury veteran takes over as CFO</h3>
+      <p class="bio">Rohan K. Iyer joins from a large private bank, where he was Group Treasurer. A chartered accountant with 19 years in banking; IIM Bangalore.</p>
+      <p class="why">management change · profile from filing + web</p>
+    </div>
+
+    <div class="card">
+      <div class="kicker"><span><b>Alert</b> · Dixon Technologies</span><span>End of day</span></div>
+      <h3>Traded at 3.4× its usual volume, closing 6.2% higher</h3>
+      <div class="metrics"><div>Volume<b>3.4×</b></div><div>Close<b class="up">+6.2%</b></div><div>Your P&amp;L<b class="up">+₹18.4K</b></div></div>
+      <p class="why">your rule: volume above 2× 20-day avg</p>
+    </div>
+
+    <div class="card">
+      <div class="kicker"><span><b>Deal</b> · Larsen &amp; Toubro</span><span>BSE 11:20 am</span></div>
+      <h3>Buys a green-hydrogen EPC firm for ₹420 cr. Small and strategic.</h3>
+    </div>
+
+    <div class="routine"><span>+ 14 routine filings</span><span>ESOP, compliance, AGM</span></div>
+  </div>
+  <div class="ask"><span>Ask Finn anything…</span><span class="mic">● speak</span></div>
+  <nav><span class="on">Today</span><span>Alerts (2)</span><span>Research</span><span>You</span></nav>
+</div>
+</div>
+
+</div>
+</body>
+</html>
