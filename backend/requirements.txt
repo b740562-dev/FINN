@@ -9,3 +9,5 @@ pg8000>=1.31
 python-dotenv>=1.0
 fastapi>=0.115
 uvicorn>=0.32
+pypdf>=5.0
+python-multipart>=0.0.9

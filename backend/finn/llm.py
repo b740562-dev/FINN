@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import threading
 import time
 
 from google import genai
@@ -18,7 +20,11 @@ from finn import config
 from finn.db import cursor
 
 BULK = "gemini-3.5-flash-lite"     # classification, extraction, one-liners, verification
-REASON = "gemini-3.8-flash"        # promise-vs-delivered, bull/bear, chat synthesis
+# promise-vs-delivered, bull/bear, chat synthesis. gemini-3.8-flash is the
+# stronger model but on 11 Nov 2026 it returned 504s / multi-minute latencies
+# on our free-tier key, so the default is 3.5-flash; override with
+# FINN_REASON_MODEL=gemini-3.8-flash when it is healthy.
+REASON = os.getenv("FINN_REASON_MODEL", "gemini-3.5-flash")
 EMBED = "gemini-embedding-2"
 EMBED_DIM = 768
 
@@ -30,13 +36,25 @@ PRICES_PER_M: dict[str, tuple[float, float] | None] = {
     REASON: None,
 }
 
+# When the primary model is overloaded (503) or too slow, fall back once to a
+# sibling model rather than leaving the user waiting minutes.
+FALLBACK = {REASON: "gemini-3.5-flash-lite" if REASON != "gemini-3.5-flash-lite" else "gemini-3.1-flash-lite",
+            BULK: "gemini-3.1-flash-lite"}
+TIMEOUT_MS = 75_000
+
 _client: genai.Client | None = None
+_client_lock = threading.Lock()
 
 
 def client() -> genai.Client:
+    """One shared client. Locked: two threads racing here would each build a
+    Client and the loser gets garbage-collected (closed) mid-request."""
     global _client
     if _client is None:
-        _client = genai.Client(api_key=config.env("GEMINI_API_KEY"))
+        with _client_lock:
+            if _client is None:
+                _client = genai.Client(api_key=config.env("GEMINI_API_KEY"),
+                                       http_options=types.HttpOptions(timeout=TIMEOUT_MS))
     return _client
 
 
@@ -86,9 +104,10 @@ def generate_json(
         thinking_config=types.ThinkingConfig(thinking_level=thinking),
     )
     last: Exception | None = None
+    use = model
     for attempt in range(retries):
         try:
-            resp = client().models.generate_content(model=model, contents=prompt, config=cfg)
+            resp = client().models.generate_content(model=use, contents=prompt, config=cfg)
             data = json.loads(resp.text)
             u = resp.usage_metadata
             tin = (u.prompt_token_count or 0) if u else 0
@@ -97,12 +116,18 @@ def generate_json(
                 c.execute(
                     "insert into public.llm_cache (key, model, response) values (%s, %s, %s::jsonb) "
                     "on conflict (key) do nothing",
-                    (key, model, json.dumps(data)),
+                    (key, use, json.dumps(data)),
                 )
-            _log(task, model, tin, tout, False, ref_type, ref_id)
+            _log(task, use, tin, tout, False, ref_type, ref_id)
             return data
-        except Exception as e:  # rate limits / transient errors / bad JSON
+        except Exception as e:  # rate limits / overload / timeouts / bad JSON
             last = e
+            msg = str(e)
+            overloaded = any(s in msg for s in ("503", "504", "UNAVAILABLE", "DEADLINE_EXCEEDED", "overloaded",
+                                                "high demand", "timed out", "Timeout", "429", "RESOURCE_EXHAUSTED"))
+            if overloaded and use == model and FALLBACK.get(model):
+                use = FALLBACK[model]           # switch model straight away instead of waiting
+                continue
             time.sleep(2 * (attempt + 1))
     raise RuntimeError(f"LLM call failed for task={task}") from last
 

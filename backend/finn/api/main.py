@@ -24,13 +24,25 @@ from finn.push.rank import build_digest
 
 app = FastAPI(title="FINN API", version="0.1")
 
+# Auth is a bearer token (no cookies), so CORS only decides which web origins
+# may call us. Local dev on any localhost port is always allowed; production
+# origins come from FRONTEND_ORIGINS (comma list) and FRONTEND_ORIGIN_REGEX
+# (e.g. Vercel preview deployments: https://finn-.*\.vercel\.app).
+_LOCAL = r"http://(localhost|127\.0\.0\.1)(:\d+)?"
+_extra = os.getenv("FRONTEND_ORIGIN_REGEX", "").strip()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in os.getenv("FRONTEND_ORIGINS", "http://localhost:3000").split(",") if o.strip()],
-    allow_origin_regex=os.getenv("FRONTEND_ORIGIN_REGEX") or None,
+    allow_origins=[o.strip() for o in os.getenv("FRONTEND_ORIGINS", "").split(",") if o.strip()],
+    allow_origin_regex=f"({_LOCAL})|({_extra})" if _extra else _LOCAL,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+# Pull side: research dossier, document upload, Q&A; plus the cost meter.
+from finn.api.research import router as research_router, usage_router  # noqa: E402
+
+app.include_router(research_router)
+app.include_router(usage_router)
 
 
 def _j(v):

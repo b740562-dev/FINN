@@ -101,7 +101,7 @@ def build_digest(holdings: dict[str, float], care_categories: list[str], *,
     for e in events:
         e.weight = holdings.get(e.symbol, 0.0)
         e.score = e.materiality + (10 if e.category in care else 0) + min(e.weight, 10)
-        parts = [LABEL.get(e.category, e.category), f"{e.weight:g}% of book"]
+        parts = [LABEL.get(e.category, e.category), f"{round(e.weight, 1):g}% of book"]
         if e.factors:
             parts.append(e.factors[0])
         e.why = " · ".join(parts)

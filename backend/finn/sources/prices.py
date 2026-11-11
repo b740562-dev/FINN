@@ -23,8 +23,11 @@ def fetch_eod(symbols: list[str], period: str = "6mo") -> dict[str, pd.DataFrame
     out: dict[str, pd.DataFrame] = {}
     for sym, tk in zip(symbols, tickers):
         try:
-            df = raw[tk] if len(tickers) > 1 else raw
+            # group_by="ticker" yields (ticker, field) MultiIndex columns, even for a single ticker
+            df = raw[tk] if isinstance(raw.columns, pd.MultiIndex) else raw
         except KeyError:
+            continue
+        if "Close" not in df.columns:
             continue
         df = df.dropna(subset=["Close"])
         if not df.empty:
