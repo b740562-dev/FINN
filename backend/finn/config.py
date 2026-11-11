@@ -21,3 +21,7 @@ SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY", required=False)
 SUPABASE_SERVICE_ROLE_KEY = env("SUPABASE_SERVICE_ROLE_KEY", required=False)
 DATABASE_URL = env("DATABASE_URL", required=False)
 TAVILY_API_KEY = env("TAVILY_API_KEY", required=False)
+
+# Accounts allowed to see internals (model routing, LLM usage & cost).
+# Comma-separated emails, set per deployment (never committed).
+ADMIN_EMAILS = {e.strip().lower() for e in env("ADMIN_EMAILS", required=False).split(",") if e.strip()}

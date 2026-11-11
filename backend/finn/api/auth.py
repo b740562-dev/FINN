@@ -25,6 +25,21 @@ class User:
     is_anonymous: bool
     email: str | None
 
+    @property
+    def is_admin(self) -> bool:
+        """Admins see internals (model routing, usage & cost). A verified,
+        non-guest email on ADMIN_EMAILS, or the local demo user when
+        FINN_DEV_ADMIN=1 is also set (development only)."""
+        if self.id == DEV_USER_ID:
+            return os.getenv("FINN_DEV_AUTH") == "1" and os.getenv("FINN_DEV_ADMIN") == "1"
+        return (not self.is_anonymous and bool(self.email)
+                and self.email.lower() in config.ADMIN_EMAILS)
+
+
+def require_admin(user: "User") -> None:
+    if not user.is_admin:
+        raise HTTPException(403, "Admins only")
+
 
 def _verify(token: str) -> User:
     r = requests.get(

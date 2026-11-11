@@ -17,7 +17,7 @@ A mobile-first agent for an investor running a portfolio of NSE stocks. It does 
 | **Alerts** | EOD price-move and volume-spike alerts against *your* thresholds (global + per-stock), with ₹ impact on your position. Filing alerts for the categories you choose. |
 | **Research** | Any NSE ticker (fetched on demand). Four sections: Snapshot, Promise vs Delivered, Health check (trajectory, balance sheet, cash quality), Bull vs Bear. Every claim has a tap-to-source citation. Follow-up Q&A over the company's own documents. |
 | **Ask bar** | Type or **speak** a ticker, a company, or a question ("Did Titan hit FY27 guidance?"). It routes to the right research page and question. |
-| **You** | Define "unusual" (sliders, filing categories). Edit holdings. Guest → permanent account. **"How FINN thinks"** cost & routing meter. |
+| **You** | Define "unusual" (sliders, filing categories). Edit holdings and profile. Guest → permanent account. **"How FINN thinks"** cost & routing meter, **admin-only** (`ADMIN_EMAILS`; the API returns 403 and strips model names for everyone else). |
 
 ## Architecture
 
@@ -90,7 +90,7 @@ Checks: `scripts/check_services.py` (Gemini + DB), `scripts/check_auth_seed.py` 
 
 ## Deploy
 
-1. **API → Render:** New → Blueprint → this repo (`render.yaml`). Enter the secrets. Set `FRONTEND_ORIGINS` to the Vercel URL.
+1. **API → Render:** New → Blueprint → this repo (`render.yaml`). Enter the secrets. Set `FRONTEND_ORIGINS` to the Vercel URL and `ADMIN_EMAILS` to the account(s) that may see internals.
 2. **Web → Vercel:** import repo, root directory `web/`, env `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL` (Render URL). Add the Vercel URL to Supabase → Authentication → URL configuration.
 3. **Scheduler → GitHub Actions:** repo secrets `DATABASE_URL`, `GEMINI_API_KEY`, `TAVILY_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`; repo variable `API_URL` (Render URL) for the keep-warm ping.
 

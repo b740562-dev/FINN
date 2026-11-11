@@ -57,7 +57,8 @@ function CiteIds({ ids, cites, open }: { ids?: string[] | string | null; cites: 
 
 // ---------------------------------------------------------------- shells
 export function SectionShell({ title, s, children }: { title: string; s: Section<Any> | null | "loading"; children?: React.ReactNode }) {
-  const meta = s && s !== "loading" && s.model ? s.model.replace("gemini-", "") : s && s !== "loading" && s.status === "ready" ? "computed" : "";
+  // Model names are only sent to admins (the API strips them for everyone else).
+  const meta = s && s !== "loading" && s.model ? s.model.replace("gemini-", "") : "";
   return (
     <section className="rsec">
       <header><h2>{title}</h2><span>{s === "loading" || !s ? "…" : meta}</span></header>

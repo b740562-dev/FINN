@@ -14,7 +14,7 @@ from datetime import date
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
-from finn.api.auth import User, current_user
+from finn.api.auth import User, current_user, require_admin
 from finn.db import cursor
 from finn.pull import sections as S
 from finn.pull.ask import ask as ask_fn
@@ -26,6 +26,13 @@ router = APIRouter(prefix="/research", tags=["research"])
 usage_router = APIRouter(tags=["usage"])
 
 MAX_UPLOAD = 40 * 1024 * 1024
+
+
+def _redact(payload: dict, user: User) -> dict:
+    """Which model produced an answer is internal; only admins see it."""
+    if user.is_admin:
+        return payload
+    return {**payload, "model": None}
 
 
 def _sym(symbol: str) -> str:
@@ -76,7 +83,7 @@ def section(symbol: str, section: str, refresh: bool = False, user: User = Depen
     if section not in S.SECTIONS:
         raise HTTPException(404, f"Unknown section; use one of {S.SECTIONS}")
     _require(sym)
-    return S.get_section(sym, section, force=refresh)
+    return _redact(S.get_section(sym, section, force=refresh), user)
 
 
 STALE_JOB_MIN = 20   # a job not updated for this long was interrupted (e.g. server restart)
@@ -177,11 +184,12 @@ class AskReq(BaseModel):
 def ask(symbol: str, req: AskReq, user: User = Depends(current_user)):
     sym = _sym(symbol)
     _require(sym)
-    return ask_fn(sym, req.question)
+    return _redact(ask_fn(sym, req.question), user)
 
 
 @usage_router.get("/usage")
 def usage(days: int = 7, user: User = Depends(current_user)):
+    require_admin(user)   # model routing and cost are internal: admins only
     with cursor(commit=False) as c:
         c.execute("""select task, model, count(*) filter (where not cache_hit), count(*) filter (where cache_hit),
                             coalesce(sum(tokens_in), 0), coalesce(sum(tokens_out), 0), sum(cost_usd)

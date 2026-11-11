@@ -35,7 +35,7 @@ export type Rules = {
 };
 
 export type Me = {
-  user: { id: string; is_anonymous: boolean; email: string | null };
+  user: { id: string; is_anonymous: boolean; email: string | null; is_admin?: boolean };
   holdings: Holding[];
   totals: { value: number; day_pnl: number; day_pct: number | null; as_of: string | null };
   rules: Rules;

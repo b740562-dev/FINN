@@ -162,8 +162,12 @@ export default function You() {
         {holdMsg && <div className="ok">{holdMsg}</div>}
       </section>
 
-      <div className="sec"><span>── How FINN thinks</span></div>
-      <section className="panel" id="usage"><UsagePanel /></section>
+      {me?.user.is_admin && (
+        <>
+          <div className="sec"><span>── How FINN thinks</span><span>admin</span></div>
+          <section className="panel" id="usage"><UsagePanel /></section>
+        </>
+      )}
 
       <div className="sec"><span>── Account</span></div>
       <section className="panel" id="account">

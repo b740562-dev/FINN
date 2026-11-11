@@ -115,7 +115,7 @@ def _rules(uid: str) -> dict:
 
 @app.get("/me")
 def me(user: User = Depends(current_user)):
-    return {"user": {"id": user.id, "is_anonymous": user.is_anonymous, "email": user.email},
+    return {"user": {"id": user.id, "is_anonymous": user.is_anonymous, "email": user.email, "is_admin": user.is_admin},
             **_portfolio(user.id), "rules": _rules(user.id)}
 
 
