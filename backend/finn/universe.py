@@ -16,25 +16,16 @@ class Holding:
 
 NOTIONAL_BOOK_INR = 50_00_000  # ₹50L
 
+# India's seven largest listed companies by market value (screener market caps,
+# 12 Nov 2026): the household names. Weighted by market cap, like an index.
 PORTFOLIO: list[Holding] = [
-    Holding("RELIANCE", "Conglomerate", "Large", 10.0),
-    Holding("HDFCBANK", "Private bank", "Large", 10.0),
-    Holding("INFY", "IT services", "Large", 8.0),
-    Holding("ITC", "FMCG", "Large", 7.0),
-    Holding("LT", "Capital goods", "Large", 7.0),
-    Holding("BHARTIARTL", "Telecom", "Large", 7.0),
-    Holding("SUNPHARMA", "Pharma", "Large", 5.0),
-    Holding("MARUTI", "Auto", "Large", 5.0),
-    Holding("TATASTEEL", "Metals", "Large", 5.0),
-    Holding("BAJFINANCE", "NBFC", "Large", 5.0),
-    Holding("ETERNAL", "Internet / delivery", "Large", 4.5),
-    Holding("TRENT", "Retail", "Large", 5.0),
-    Holding("DIXON", "Electronics manufacturing", "Mid", 4.0),
-    Holding("POLYCAB", "Cables", "Mid", 4.0),
-    Holding("PERSISTENT", "IT services", "Mid", 4.0),
-    Holding("SUZLON", "Renewables", "Mid", 3.5),
-    Holding("CDSL", "Capital markets", "Mid", 3.0),
-    Holding("IEX", "Power exchange", "Small", 3.0),
+    Holding("RELIANCE", "Conglomerate", "Large", 22.5),
+    Holding("BHARTIARTL", "Telecom", "Large", 16.5),
+    Holding("HDFCBANK", "Private bank", "Large", 15.5),
+    Holding("ICICIBANK", "Private bank", "Large", 14.0),
+    Holding("SBIN", "PSU bank", "Large", 12.0),
+    Holding("TCS", "IT services", "Large", 11.0),
+    Holding("BAJFINANCE", "NBFC", "Large", 8.5),
 ]
 
 # HAL was swapped for BEL (same sector): HAL had 1 transcript in 13 months and

@@ -7,6 +7,7 @@ import type { Alert } from "@/lib/types";
 import { inr, pct, tone } from "@/lib/format";
 import { useData } from "@/components/data";
 import { ProfileButton } from "@/components/profile-menu";
+import { NewsSearch } from "@/components/news-search";
 
 const CAT: Record<string, string> = {
   results: "Results", "M&A": "M&A", fund_raise: "Fund raise", management_change: "Management", litigation: "Legal",
@@ -108,6 +109,8 @@ export default function Alerts() {
           {r && <Link href="/you" className="asof">±{r.move_pct}% · {r.volume_multiple}× vol ✎</Link>}
         </div>
       </header>
+
+      <NewsSearch />
 
       {err && <div className="err">{err}</div>}
       {!items && !err && (<><div className="skel sm" style={{ marginTop: 12 }} /><div className="skel sm" /><div className="skel sm" /></>)}

@@ -34,7 +34,11 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}): Pr
     let msg = res.statusText;
     try {
       const j = await res.json();
-      msg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail ?? j);
+      msg = typeof j.detail === "string"
+        ? j.detail
+        : Array.isArray(j.detail)   // FastAPI validation errors: show each distinct message once
+          ? [...new Set(j.detail.map((d: { msg?: string }) => d.msg).filter(Boolean))].join("; ") || "Invalid input"
+          : JSON.stringify(j.detail ?? j);
     } catch {}
     throw new ApiError(res.status, msg);
   }

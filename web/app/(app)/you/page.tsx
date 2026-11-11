@@ -6,7 +6,7 @@ import { api, put } from "@/lib/api";
 import type { Holding, Rules } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { useAuth } from "@/components/auth";
-import { initialsOf, profileCompleteness, useData } from "@/components/data";
+import { DEFAULT_NAME, initialsOf, profileCompleteness, useData } from "@/components/data";
 import { Ring } from "@/components/ring";
 import { MyDocuments } from "@/components/my-docs";
 import { UsagePanel } from "@/components/usage";
@@ -76,7 +76,7 @@ export default function You() {
   async function saveHoldings() {
     setHoldMsg(null);
     try {
-      await put("/holdings", rows.filter((r) => r.quantity > 0).map(({ symbol, quantity }) => ({ symbol, quantity })));
+      await put("/holdings", rows.map(({ symbol, quantity }) => ({ symbol, quantity: Math.max(0, quantity || 0) })));
       setHoldMsg("Holdings saved.");
       refreshMe();
     } catch (e) {
@@ -84,13 +84,14 @@ export default function You() {
     }
   }
 
-  async function resetToZero() {
+  async function resetAll() {
     setConfirmZero(false);
     setHoldMsg(null);
+    const zeroed = rows.map((r) => ({ ...r, quantity: 0 }));
     try {
-      await put("/holdings", []);
-      setRows([]);
-      setHoldMsg("Portfolio reset to 0. Add holdings above.");
+      await put("/holdings", zeroed.map(({ symbol }) => ({ symbol, quantity: 0 })));
+      setRows(zeroed);
+      setHoldMsg("All set to 0. Enter your own quantities, remove companies with ×, or add new ones.");
       refreshMe();
     } catch (e) {
       setHoldMsg((e as Error).message);
@@ -110,7 +111,7 @@ export default function You() {
         <div className="yc-top">
           <div className="yc-av">{initialsOf(profile, email, isGuest)}</div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="yc-name">{profile?.full_name || (isGuest ? "Guest investor" : email || "Your profile")}</div>
+            <div className="yc-name">{profile?.full_name || (isGuest ? DEFAULT_NAME : email || "Your profile")}</div>
             {workLine && <div className="yc-work">{workLine}</div>}
             <Link href="/profile" className="yc-edit">Edit profile <span aria-hidden>▸</span></Link>
           </div>
@@ -177,7 +178,7 @@ export default function You() {
       <section className="panel ysec" id="portfolio">
         <h2>Portfolio<span>{rows.length} holdings{me ? ` · ${inr(me.totals.value, { compact: true })}` : ""}</span></h2>
         {rows.map((r, i) => (
-          <div className="hold" key={r.symbol}>
+          <div className={`hold ${r.quantity > 0 ? "" : "zero"}`} key={r.symbol}>
             <div><div className="tk">{r.symbol}</div><div className="co">{r.name}</div></div>
             <input className="qty" type="number" min={0} value={r.quantity}
               onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, quantity: Number(e.target.value) } : x)))} aria-label={`${r.symbol} quantity`} />
@@ -202,12 +203,12 @@ export default function You() {
           <button className="btn primary" onClick={saveHoldings}>Save holdings</button>
           {confirmZero ? (
             <span className="zero-confirm">
-              <span>Remove all {rows.length} holdings?</span>
+              <span>Set all {rows.length} holdings to 0?</span>
               <button className="btn ghost" onClick={() => setConfirmZero(false)}>Keep</button>
-              <button className="btn danger" onClick={resetToZero}>Reset to 0</button>
+              <button className="btn danger" onClick={resetAll}>Reset</button>
             </span>
           ) : (
-            <button className="btn ghost" onClick={() => setConfirmZero(true)} disabled={!rows.length}>Reset to 0</button>
+            <button className="btn danger" onClick={() => setConfirmZero(true)} disabled={!rows.some((r) => r.quantity > 0)}>Reset</button>
           )}
         </div>
         {holdMsg && <div className="ok">{holdMsg}</div>}

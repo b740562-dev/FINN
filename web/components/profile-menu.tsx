@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { put } from "@/lib/api";
 import { inr } from "@/lib/format";
 import { useAuth } from "./auth";
-import { initialsOf, profileCompleteness, useData } from "./data";
+import { DEFAULT_NAME, initialsOf, profileCompleteness, useData } from "./data";
 import { Ring } from "./ring";
 
 /** Top-right avatar on every screen: who you are, a glance at the account,
@@ -23,7 +23,7 @@ export function ProfileButton() {
   const guest = Boolean(user?.is_anonymous);
   const email = user?.email || null;
   const initial = initialsOf(profile, email, guest);
-  const displayName = profile?.full_name || (guest ? "Guest investor" : email ?? "Signed in");
+  const displayName = profile?.full_name || (guest ? DEFAULT_NAME : email ?? "Signed in");
   const workLine = [profile?.work_role, profile?.work_company].filter(Boolean).join(" · ");
   const since = user?.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : null;
 
@@ -42,7 +42,7 @@ export function ProfileButton() {
   async function reset() {
     setBusy("reset");
     try {
-      await put("/holdings", []);
+      await put("/holdings", (me?.holdings ?? []).map((h) => ({ symbol: h.symbol, quantity: 0 })));
       await refreshMe();
       setConfirmReset(false);
       setOpen(false);
@@ -108,14 +108,14 @@ export function ProfileButton() {
             <div className="pm-list danger">
               {confirmReset ? (
                 <div className="pm-confirm">
-                  <span>Remove all {me?.holdings.length ?? 0} holdings and reset your portfolio to ₹0?</span>
+                  <span>Set all {me?.holdings.length ?? 0} holdings to 0? The companies stay on your list.</span>
                   <div>
                     <button onClick={() => setConfirmReset(false)}>Cancel</button>
-                    <button className="yes" onClick={reset} disabled={busy === "reset"}>{busy === "reset" ? "…" : "Reset to 0"}</button>
+                    <button className="yes" onClick={reset} disabled={busy === "reset"}>{busy === "reset" ? "…" : "Reset"}</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setConfirmReset(true)} disabled={!me?.holdings.length}><span>↺</span>Reset portfolio to 0</button>
+                <button onClick={() => setConfirmReset(true)} disabled={!me?.holdings.some((h) => h.quantity > 0)}><span>↺</span>Reset portfolio</button>
               )}
               <button className="out" onClick={out} disabled={busy === "out"}><span>⏻</span>{busy === "out" ? "Signing out…" : "Sign out"}</button>
             </div>

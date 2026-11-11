@@ -79,10 +79,13 @@ export function profileCompleteness(p: Partial<Profile> | null, email: string | 
   return Math.round((filled / (COMPLETENESS_FIELDS.length + 1)) * 100);
 }
 
-/** Initials for an avatar: "Asha Rao" -> "AR", email -> "A", guest -> "G". */
+/** Name shown until the user sets their own (guest / demo accounts). */
+export const DEFAULT_NAME = "Surya";
+
+/** Initials for an avatar: "Asha Rao" -> "AR", email -> "A", guest -> "S" (Surya). */
 export function initialsOf(profile: Profile | null, email: string | null | undefined, guest: boolean): string {
   const name = profile?.full_name?.trim();
   if (name) return name.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
   if (email && !guest) return email[0].toUpperCase();
-  return "G";
+  return DEFAULT_NAME[0];
 }

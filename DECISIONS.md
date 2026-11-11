@@ -20,34 +20,28 @@ Deadline: **15 Nov 2026** · Budget: **~25–35 focused hours** · Principle: *t
   - Postgres Row Level Security scopes user data per account. The FastAPI backend verifies the Supabase JWT on each request.
   - Shared data (prices, filings, extracted results, RAG index, dossiers) is global and cached once for everyone. Only portfolio, settings and alert state are per user.
   - **"Try as guest"** button (Supabase anonymous sign-in) next to Google/email. One tap gives an instant account seeded with the demo portfolio, upgradable to Google/email later without losing settings. This is the primary call-to-action on the login screen, so graders get in with zero friction.
-  - "Reset to demo portfolio" option in settings.
+  - **Reset** (red, with confirm) sets every holding to 0 but keeps the companies on the list, so the user can type their own quantities, remove companies or add new ones. A company held at 0 stays a watchlist entry: its news still shows, ranked without position size.
 - **Holdings carry quantity/weight.** This feeds the ranking and lets cards show impact lines like "this move cost you ₹1.2L / −0.8%".
 
-## 1b. Demo portfolio (approved; seeded into every new account)
-| Ticker | Sector | Size | Weight |
+## 1b. Demo portfolio (seeded into every new account)
+**Revised 12 Nov: India's seven largest listed companies**, the names every investor knows, weighted by market cap like an index (market caps from screener, 12 Nov 2026).
+
+| Ticker | Sector | Market cap (₹ cr) | Weight |
 |---|---|---|---|
-| RELIANCE | Conglomerate | Large | 10% |
-| HDFCBANK | Private bank | Large | 10% |
-| INFY | IT services | Large | 8% |
-| ITC | FMCG | Large | 7% |
-| LT | Capital goods | Large | 7% |
-| BHARTIARTL | Telecom | Large | 7% |
-| SUNPHARMA | Pharma | Large | 5% |
-| MARUTI | Auto | Large | 5% |
-| TATASTEEL | Metals | Large | 5% |
-| BAJFINANCE | NBFC | Large | 5% |
-| ETERNAL | Internet / delivery | Large | 4.5% |
-| TRENT | Retail | Large | 5% |
-| DIXON | Electronics manufacturing | Mid | 4% |
-| POLYCAB | Cables | Mid | 4% |
-| PERSISTENT | IT (mid) | Mid | 4% |
-| SUZLON | Renewables | Mid | 3.5% |
-| CDSL | Capital markets | Mid | 3% |
-| IEX | Power exchange | Small–mid | 3% |
+| RELIANCE | Conglomerate | 18.07 L | 22.5% |
+| BHARTIARTL | Telecom | 13.16 L | 16.5% |
+| HDFCBANK | Private bank | 12.45 L | 15.5% |
+| ICICIBANK | Private bank | 11.29 L | 14% |
+| SBIN | PSU bank | 9.80 L | 12% |
+| TCS | IT services | 8.94 L | 11% |
+| BAJFINANCE | NBFC | 6.69 L | 8.5% |
+
+*(Tried and dropped the same day: the seven most widely held stocks by shareholder count (Tata Motors, Yes Bank, Vodafone Idea, Tata Steel, Suzlon, IRFC, Jio Financial). Widely held is not the same as well known.)*
+*(First version, 11 Nov, 18 stocks: RELIANCE, HDFCBANK, INFY, ITC, LT, BHARTIARTL, SUNPHARMA, MARUTI, TATASTEEL, BAJFINANCE, ETERNAL, TRENT, DIXON, POLYCAB, PERSISTENT, SUZLON, CDSL, IEX. Replaced because a default portfolio should look like what people actually own.)*
 
 Notional book value ₹50L, so quantities are derived from weight × ₹50L ÷ the latest close at seed time.
 **Ad-hoc research set (pre-warmed):** BEL, TITAN, ASIANPAINT, KPITTECH. *(HAL swapped for BEL on 11 Nov: HAL had only 1 transcript in 13 months.)*
-**Data check (11 Nov):** all 22 tickers have prices + 13 quarters + 9–13 yrs P&L on screener. ITC and TRENT hold no concalls, so their pull view runs numbers-only and shows a "no transcripts" state. CDSL is NSE-only (no BSE code).
+**Data check:** every default ticker loads prices (yfinance) and reported financials (screener). ITC holds no concalls, so its pull view runs numbers-only and shows a "no transcripts" state.
 Any ticker that fails the data check (yfinance prices / screener transcripts) is swapped for a same-sector peer.
 
 ## 2. Push (all four in scope)

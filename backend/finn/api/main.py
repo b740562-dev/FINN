@@ -216,6 +216,49 @@ def digest(window: str = Query("24h", pattern="^(24h|7d|30d|custom)$"),
     return {"window": window, "days": span, **d}
 
 
+# ------------------------------------------------------------- company news
+NEWS_REFRESH_HOURS = 6
+
+
+@app.get("/news/{symbol}")
+def company_news(symbol: str, days: int = Query(90, ge=1, le=365), user: User = Depends(current_user)):
+    """Important filings for ANY listed company, held or not: "is there anything I
+    should know before I buy this?". Loads the company on first search, refreshes
+    its filings if they're stale, classifies anything new, then ranks it exactly
+    like the digest (position size is 0 if you don't hold it)."""
+    from finn.jobs.ingest import load_company
+    from finn.pull.company import CompanyNotFound, ensure_company, normalise
+    from finn.push.bios import enrich_management_changes
+    from finn.push.classify import classify_pending
+    from finn.push.results import attach_results_cards
+
+    sym = normalise(symbol)
+    try:
+        meta = ensure_company(sym)
+    except CompanyNotFound as e:
+        raise HTTPException(404, str(e))
+    fetched = meta.get("fundamentals_at")
+    if not meta.get("created") and fetched and             datetime.fromisoformat(fetched) < datetime.now(timezone.utc) - timedelta(hours=NEWS_REFRESH_HOURS):
+        try:
+            load_company(sym)             # picks up filings posted since the last look
+        except Exception:
+            pass                          # stale beats nothing; the scheduler retries
+    with cursor(commit=False) as c:
+        c.execute("select count(*) from public.filings where symbol = %s and category is null", (sym,))
+        pending = c.fetchone()[0]
+    if pending:                           # same pipeline as the scheduler, cached per filing
+        classify_pending()
+        attach_results_cards()
+        enrich_management_changes()
+
+    weights = {h["symbol"]: h["weight"] for h in _portfolio(user.id)["holdings"]}
+    d = build_digest({sym: weights.get(sym, 0.0)}, _rules(user.id)["categories"],
+                     since=datetime.now(timezone.utc) - timedelta(days=days))
+    return {"company": {"symbol": sym, "name": meta.get("name"), "sector": meta.get("sector"),
+                        "market_cap_cr": meta.get("market_cap_cr")},
+            "held": sym in weights, "days": days, **d}
+
+
 # ------------------------------------------------------------------ alerts
 @app.get("/alerts")
 def alerts(limit: int = Query(50, le=200), user: User = Depends(current_user)):
@@ -279,7 +322,7 @@ def put_rules(req: RulesReq, user: User = Depends(current_user)):
 # ---------------------------------------------------------------- holdings
 class HoldingIn(BaseModel):
     symbol: str
-    quantity: float = Field(gt=0)
+    quantity: float = Field(ge=0)   # 0 = keep the company on your list, no position
 
 
 @app.put("/holdings")

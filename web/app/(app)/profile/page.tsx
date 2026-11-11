@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { put } from "@/lib/api";
 import type { Profile } from "@/lib/types";
 import { useAuth } from "@/components/auth";
-import { initialsOf, profileCompleteness, useData } from "@/components/data";
+import { DEFAULT_NAME, initialsOf, profileCompleteness, useData } from "@/components/data";
 import { Ring } from "@/components/ring";
 import { ProfileButton } from "@/components/profile-menu";
 
@@ -77,7 +77,7 @@ export default function EditProfile() {
         <div className="pf-hero">
           <div className="pf-av">{initials}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="pf-name">{f.full_name || (guest ? "Guest investor" : email || "Your name")}</div>
+            <div className="pf-name">{f.full_name || (guest ? DEFAULT_NAME : email || "Your name")}</div>
             <div className="pf-sub">{[f.work_role, f.work_company].filter(Boolean).join(" · ") || "Add your work below"}</div>
           </div>
           <Ring pct={profileCompleteness(f, email)} size={50} stroke={4.5} />

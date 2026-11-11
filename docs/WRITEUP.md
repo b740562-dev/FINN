@@ -2,7 +2,7 @@
 
 ## What I built
 
-FINN is a mobile-first PWA for an investor holding an 18-stock NSE portfolio. It has one opinion about interaction: **the investor's scarce resource is attention, so the home screen is a single ranked list where every card has to justify itself.**
+FINN is a mobile-first PWA for an investor holding a portfolio of NSE stocks. It has one opinion about interaction: **the investor's scarce resource is attention, so the home screen is a single ranked list where every card has to justify itself.**
 
 - **Push.** A daily digest for any window (24h / 7d / 30d, or *replay* any past date):
   - Results arrive as a QoQ/YoY table of Revenue, EBITDA, PBT and PAT. Lenders get NII and asset quality.

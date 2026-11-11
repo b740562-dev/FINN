@@ -112,6 +112,13 @@ export default function Today() {
       </section>
 
       {err && <div className="err">{err}</div>}
+      {me && me.holdings.length > 0 && me.totals.value === 0 && (
+        <Link href="/you#portfolio" className="zero-hint">
+          <span className="zh-dot" />
+          <span><b>Holdings at 0.</b> News still follows your {me.holdings.length} companies. Add quantities to rank it by position size.</span>
+          <span aria-hidden>›</span>
+        </Link>
+      )}
 
       <div className="sec news-h"><span><i className="live" />Top news</span>{digest && <span>{digest.counts.matters} of {digest.counts.filings} filings</span>}</div>
 

@@ -66,7 +66,7 @@ export default function Login() {
         <button className="btn primary block" disabled={!!busy} onClick={() => run("guest", signInGuest)}>
           {busy === "guest" ? "SETTING UP YOUR DEMO PORTFOLIO…" : "TRY AS GUEST →"}
         </button>
-        <div className="note" style={{ marginTop: 0 }}>18-stock demo portfolio · no sign-up</div>
+        <div className="note" style={{ marginTop: 0 }}>7-stock demo portfolio · no sign-up</div>
         {err && <div className="err" style={{ margin: 0 }}>{err}</div>}
         {devMode && (
           <div className="flag" style={{ textAlign: "center" }}>Local demo mode</div>
