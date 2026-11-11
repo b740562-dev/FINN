@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "./supabase";
+import { DEV_TOKEN, devSignedIn } from "./devauth";
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -11,6 +12,7 @@ export class ApiError extends Error {
 }
 
 async function token(): Promise<string | null> {
+  if (devSignedIn()) return DEV_TOKEN;
   const { data } = await supabase().auth.getSession();
   return data.session?.access_token ?? null;
 }

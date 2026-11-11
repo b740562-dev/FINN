@@ -33,9 +33,9 @@ export function Cited({ text, cites, open }: { text: string; cites: Citation[]; 
       {parts.map((p, i) => {
         const m = p.match(/^\[([a-z]\d+(?:\s*,\s*[a-z]\d+)*)\]$/i);
         if (!m) return <Fragment key={i}>{p}</Fragment>;
-        return m[1].split(/\s*,\s*/).map((id) => {
+        return [...new Set(m[1].split(/\s*,\s*/))].map((id) => {
           const c = cites.find((x) => x.id.toLowerCase() === id.toLowerCase());
-          return c ? <button key={i + id} className="cite" onClick={() => open(c)}>{id}</button> : null;
+          return c ? <button key={`${i}-${id}`} className="cite" onClick={() => open(c)}>{id}</button> : null;
         });
       })}
     </>
@@ -43,7 +43,8 @@ export function Cited({ text, cites, open }: { text: string; cites: Citation[]; 
 }
 
 function CiteIds({ ids, cites, open }: { ids?: string[] | string | null; cites: Citation[]; open: (c: Citation) => void }) {
-  const list = (Array.isArray(ids) ? ids : ids ? [ids] : []).filter(Boolean);
+  // De-duplicate: a point can cite the same source twice, and keys must be unique.
+  const list = [...new Set((Array.isArray(ids) ? ids : ids ? [ids] : []).filter(Boolean))];
   return (
     <>
       {list.map((id) => {

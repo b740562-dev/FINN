@@ -4,12 +4,13 @@ briefly so most requests don't make the extra round trip."""
 from __future__ import annotations
 
 import hashlib
+import os
 import threading
 import time
 from dataclasses import dataclass
 
 import requests
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Request
 
 from finn import config
 
@@ -37,10 +38,29 @@ def _verify(token: str) -> User:
     return User(id=u["id"], is_anonymous=bool(u.get("is_anonymous")), email=u.get("email"))
 
 
-def current_user(authorization: str | None = Header(default=None)) -> User:
+# ---- Local demo mode (development only) ------------------------------------
+# For demoing on a network that blocks *.supabase.co. Accepted ONLY when
+# FINN_DEV_AUTH=1 is set in the server's environment AND the request comes
+# from this machine. Never set FINN_DEV_AUTH in a deployed environment.
+DEV_TOKEN = "dev-local-demo"
+DEV_USER_ID = "00000000-0000-4000-8000-00000000f1a0"
+_LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
+
+
+def _dev_user(request: Request, token: str) -> User | None:
+    if os.getenv("FINN_DEV_AUTH") != "1" or token != DEV_TOKEN:
+        return None
+    if not request.client or request.client.host not in _LOCAL_HOSTS:
+        raise HTTPException(401, "Dev demo token is only accepted from localhost")
+    return User(id=DEV_USER_ID, is_anonymous=True, email=None)
+
+
+def current_user(request: Request, authorization: str | None = Header(default=None)) -> User:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "Missing bearer token")
     token = authorization.split(" ", 1)[1].strip()
+    if dev := _dev_user(request, token):
+        return dev
     key = hashlib.sha256(token.encode()).hexdigest()
     now = time.time()
     with _lock:

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { DEV_TOKEN, DEV_USER_ID, devModeAvailable, devSignedIn, setDevSignedIn } from "@/lib/devauth";
 
 type AuthCtx = {
   session: Session | null;
@@ -16,11 +17,25 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
+/** Minimal session object for local demo mode (see lib/devauth.ts). */
+function devSession(): Session {
+  return {
+    access_token: DEV_TOKEN, refresh_token: "", expires_in: 3600, token_type: "bearer",
+    user: { id: DEV_USER_ID, is_anonymous: true, email: undefined, aud: "authenticated", app_metadata: {},
+            user_metadata: {}, created_at: new Date().toISOString() },
+  } as unknown as Session;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (devModeAvailable()) {            // local demo mode: no Supabase calls at all
+      setSession(devSignedIn() ? devSession() : null);
+      setReady(true);
+      return;
+    }
     const sb = supabase();
     sb.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -31,6 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInGuest = useCallback(async () => {
+    if (devModeAvailable()) {
+      setDevSignedIn(true);
+      setSession(devSession());
+      return;
+    }
     const { error } = await supabase().auth.signInAnonymously();
     if (error) throw error;
   }, []);
@@ -59,7 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase().auth.signOut();
+    if (devModeAvailable()) {
+      setDevSignedIn(false);
+      setSession(null);
+    } else {
+      await supabase().auth.signOut();
+    }
     sessionStorage.removeItem("finn.bootstrapped");
   }, []);
 

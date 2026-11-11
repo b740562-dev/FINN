@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth";
+import { devModeAvailable } from "@/lib/devauth";
 
 const GOOGLE = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
 
@@ -13,7 +14,9 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [devMode, setDevMode] = useState(false);
 
+  useEffect(() => setDevMode(devModeAvailable()), []);
   useEffect(() => {
     if (ready && session) router.replace("/");
   }, [ready, session, router]);
@@ -42,12 +45,7 @@ export default function Login() {
       </ul>
 
       <div className="actions">
-        <button className="btn primary block" disabled={!!busy} onClick={() => run("guest", signInGuest)}>
-          {busy === "guest" ? "SETTING UP YOUR DEMO PORTFOLIO…" : "TRY AS GUEST →"}
-        </button>
-        <div className="note" style={{ marginTop: 0 }}>Starts with an 18-stock demo portfolio. Nothing to fill in.</div>
-
-        <div className="or">OR SIGN IN</div>
+        <div className="or" style={{ marginTop: 0 }}>SIGN IN</div>
         {GOOGLE && (
           <button className="btn block" disabled={!!busy} onClick={() => run("google", signInGoogle)}>
             Continue with Google
@@ -64,7 +62,16 @@ export default function Login() {
             <button className="btn block" disabled={!!busy || !email}>{busy === "email" ? "SENDING…" : "EMAIL ME A SIGN-IN LINK"}</button>
           </form>
         )}
+
+        <div className="or">OR</div>
+        <button className="btn primary block" disabled={!!busy} onClick={() => run("guest", signInGuest)}>
+          {busy === "guest" ? "SETTING UP YOUR DEMO PORTFOLIO…" : "TRY AS GUEST →"}
+        </button>
+        <div className="note" style={{ marginTop: 0 }}>Starts with an 18-stock demo portfolio. Nothing to fill in.</div>
         {err && <div className="err" style={{ margin: 0 }}>{err}</div>}
+        {devMode && (
+          <div className="flag" style={{ textAlign: "center" }}>Local demo mode: “Try as guest” uses a local demo account (no Supabase sign-in).</div>
+        )}
         <div className="note">End-of-day data · NSE/BSE filings via screener.in · Not investment advice.</div>
       </div>
     </main>

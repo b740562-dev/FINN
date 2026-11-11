@@ -28,7 +28,7 @@ from finn.push.results import build_card, quarter_label
 
 VERSION = "v1"
 # Per-section versions: bumping one only invalidates that section's cache.
-SECTION_VERSION = {"promise_delivered": "v7"}   # v7: guidance pre-filter, computed periods, guards, YTD tracking
+SECTION_VERSION = {"promise_delivered": "v7", "snapshot": "v3"}   # v7: guidance pre-filter, computed periods, guards, YTD tracking
 SECTIONS = ("snapshot", "health", "promise_delivered", "bull_bear")
 
 PRIMARY_ONLY = ("Use ONLY the numbered excerpts and numbers given below. Do not use any outside or background "
@@ -128,9 +128,49 @@ BUSINESS_SCHEMA = {
 }
 
 
+_BIZ = re.compile(r"\b(engaged in|(?:is|are|as) (?:a|an|one of|the|india'?s)\b[^.]{0,40}\b(?:leading|largest|"
+                  r"company|manufacturer|player|brand|provider|enterprise)|leading \w+ (?:company|manufacturer|player)|"
+                  r"we (?:offer|make|manufacture|provide|serve|operate)|our (?:products|business|portfolio|offerings?|"
+                  r"customers|segments?|brands?)|business (?:overview|segments?|model)|segment[- ]wise|"
+                  r"product (?:mix|portfolio|range)|revenue (?:from|mix|share)|manufactur\w+|markets? (?:we|in which)|"
+                  r"customers? (?:include|across)|management discussion|industry structure|order book|home d[eé]cor|"
+                  r"brands?|stores?|clients?)", re.I)
+_NOTICE = re.compile(r"notice is hereby given|annual general meeting|ordinary resolution|special resolution|e-?voting|"
+                     r"proxy|book closure|record date|remuneration of (?:the )?(?:statutory )?auditors?|"
+                     r"registered office|scrutini[sz]er|video conferencing|dividend for the financial year", re.I)
+
+
+def _business_chunks(symbol: str, limit: int = 10) -> list[Chunk]:
+    """Passages that describe the business (latest annual report first), with the
+    AGM notice / resolutions boilerplate excluded. Semantic search alone tends to
+    land on the AGM notice at the front of the report."""
+    with cursor(commit=False) as c:
+        c.execute("""select dc.id, dc.document_id, d.label, d.kind, d.period::text, dc.page, dc.content
+                     from public.doc_chunks dc join public.documents d on d.id = dc.document_id
+                     where d.symbol = %s and d.kind = 'annual_report'
+                       and d.id = (select max(id) from public.documents where symbol = %s and kind = 'annual_report')""",
+                  (symbol, symbol))
+        rows = c.fetchall()
+    scored = []
+    for cid, did, label, kind, period, page, text in rows:
+        if _NOTICE.search(text):
+            continue
+        s = len(_BIZ.findall(text))
+        if s >= 2:
+            scored.append((s, cid, did, label, kind, period, page, text))
+    top = sorted(scored, key=lambda x: x[0], reverse=True)[:limit]
+    chunks = [Chunk(chunk_id=cid, document_id=did, doc_label=label, kind=kind, period=period, page=page,
+                    content=text, score=float(s)) for s, cid, did, label, kind, period, page, text in top]
+    seen = {ch.chunk_id for ch in chunks}
+    for ch in search(symbol, "business overview what the company does segments products customers", k=6):
+        if ch.chunk_id not in seen and not _NOTICE.search(ch.content):   # semantic backstop
+            seen.add(ch.chunk_id)
+            chunks.append(ch)
+    return chunks[:limit + 4]
+
+
 def _business(symbol: str, name: str) -> tuple[dict | None, list[dict], dict]:
-    chunks = search(symbol, "business overview what the company does segments products services revenue mix "
-                            "customers geographies", k=8)
+    chunks = _business_chunks(symbol)
     if not chunks:
         return None, [], {}
     block, refs = chunk_block(chunks)
@@ -145,8 +185,12 @@ def _business(symbol: str, name: str) -> tuple[dict | None, list[dict], dict]:
 
     def ok(cite: str, quote: str) -> str | None:
         nonlocal dropped
+        cite = str(cite or "").strip("[] ")                      # model often writes "[c3]"
         ch = refs.get(cite)
-        if ch and quote_in(quote, ch.content):
+        if not (ch and quote_in(quote, ch.content)):             # wrong id: accept a verbatim match anywhere
+            hit = next(((k, c) for k, c in refs.items() if quote_in(quote, c.content)), None)
+            cite, ch = hit if hit else (cite, None)
+        if ch:
             cites.setdefault(cite, citation(cite, ch, quote))
             return cite
         dropped += 1
