@@ -2,7 +2,9 @@
 Windows Smart App Control to block, and nothing to compile on Render)."""
 from __future__ import annotations
 
+import queue
 import ssl
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -44,16 +46,58 @@ def connect():
     return pg8000.dbapi.connect(**_conn_kwargs(config.env("DATABASE_URL")))
 
 
+# Small pool: a TLS handshake to the Mumbai pooler costs ~0.5s, so reuse
+# connections across requests. pg8000 connections are not thread-safe, so a
+# connection is checked out by exactly one caller at a time.
+_POOL: queue.LifoQueue = queue.LifoQueue(maxsize=8)
+
+
+def _checkout():
+    while True:
+        try:
+            conn, born = _POOL.get_nowait()
+        except queue.Empty:
+            return connect(), time.monotonic()
+        if time.monotonic() - born < 240:   # recycle before the pooler's idle timeout
+            return conn, born
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def _checkin(conn, born) -> None:
+    try:
+        _POOL.put_nowait((conn, born))
+    except queue.Full:
+        conn.close()
+
+
 @contextmanager
 def cursor(commit: bool = True):
-    conn = connect()
+    conn, born = _checkout()
+    healthy = True
     try:
         cur = conn.cursor()
         yield cur
         if commit:
             conn.commit()
+        else:
+            conn.rollback()  # end the read transaction before returning to the pool
+    except pg8000.dbapi.InterfaceError:
+        healthy = False      # broken socket: drop it
+        raise
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            healthy = False
         raise
     finally:
-        conn.close()
+        if healthy:
+            _checkin(conn, born)
+        else:
+            try:
+                conn.close()
+            except Exception:
+                pass

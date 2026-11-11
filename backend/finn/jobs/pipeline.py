@@ -7,6 +7,8 @@ import sys
 import time
 
 from finn.jobs.ingest import main as ingest
+from finn.push.alerts import run_alerts
+from finn.push.bios import enrich_management_changes
 from finn.push.classify import classify_pending
 from finn.push.results import attach_results_cards
 from finn.universe import all_symbols
@@ -17,6 +19,8 @@ def run(symbols: list[str]) -> None:
     ingest(symbols)
     print("classify:", classify_pending())
     print("results cards:", attach_results_cards())
+    print("bios:", enrich_management_changes())
+    print("alerts:", run_alerts(lookback_days=3))
     print(f"pipeline done in {time.time() - t0:.0f}s")
 
 
