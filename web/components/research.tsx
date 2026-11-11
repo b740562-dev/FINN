@@ -289,21 +289,46 @@ export function PromiseView({ s, open }: { s: Section<Any>; open: (c: Citation) 
 }
 
 // ---------------------------------------------------------------- bull / bear
-export function BullBearView({ s, open }: { s: Section<Any>; open: (c: Citation) => void }) {
-  const point = (p: Any, i: number, up: boolean) => (
-    <li key={i} className={up ? "bull" : "bear"}>
-      <span className="ic">{up ? "▲" : "▼"}</span>
-      <Clamp>
-        <Cited text={typeof p === "string" ? p : p.point} cites={s.citations} open={open} />
-        {typeof p !== "string" && <CiteIds ids={p.citation_ids ?? p.citations} cites={s.citations} open={open} />}
-      </Clamp>
+/** "OCF 59% of PAT" -> { value: "59%", label: "OCF of PAT" }; prefers a number with a unit,
+ *  so "Q2 FY27 PAT -28% YoY" gives -28% rather than the 2 in Q2. */
+function splitStat(stat: string): { value: string; label: string } | null {
+  if (!stat) return null;
+  const rx = /[-−+>~<]?\s?\d[\d,.]*\s?(%|x\b|bps?\b|cr\b|crore|lakh|million|billion|days?\b|yrs?\b)?/gi;
+  const toks = [...stat.matchAll(rx)].map((m) => ({ t: m[0].trim(), unit: Boolean(m[1]) }));
+  if (!toks.length) return null;
+  const pick = toks.find((t) => t.unit) ?? toks[toks.length - 1];
+  const label = stat.replace(pick.t, " ").replace(/\s+/g, " ").replace(/^[\s:·-]+|[\s:·-]+$/g, "");
+  return { value: pick.t.replace(/^-/, "−"), label };
+}
+
+function BBRow({ p, up, s, open }: { p: Any; up: boolean; s: Section<Any>; open: (c: Citation) => void }) {
+  const [more, setMore] = useState(false);
+  const st = splitStat(p.stat || "");
+  const title = p.title || null;
+  return (
+    <li className={`bbrow ${up ? "bull" : "bear"}`} onClick={() => setMore(!more)}>
+      <div className="bbstat">
+        {st ? (<><b>{st.value}</b><span>{st.label}</span></>) : <b className="ic">{up ? "▲" : "▼"}</b>}
+      </div>
+      <div className="bbbody">
+        {title ? <div className="bbt">{title}</div> : <Clamp><Cited text={p.point} cites={s.citations} open={open} /></Clamp>}
+        <div className="bbc"><CiteIds ids={p.citation_ids ?? p.citations} cites={s.citations} open={open} /></div>
+        {more && title && <div className="bbp">{p.point}</div>}
+      </div>
     </li>
   );
+}
+
+export function BullBearView({ s, open }: { s: Section<Any>; open: (c: Citation) => void }) {
+  const bull: Any[] = s.content?.bull ?? [];
+  const bear: Any[] = s.content?.bear ?? [];
   return (
-    <ul className="bb2">
-      {(s.content?.bull ?? []).map((p: Any, i: number) => point(p, i, true))}
-      {(s.content?.bear ?? []).map((p: Any, i: number) => point(p, i, false))}
-    </ul>
+    <div className="bb3">
+      <div className="bbh up">▲ Bull</div>
+      <ul>{bull.map((p, i) => <BBRow key={`u${i}`} p={typeof p === "string" ? { point: p } : p} up s={s} open={open} />)}</ul>
+      <div className="bbh dn">▼ Bear</div>
+      <ul>{bear.map((p, i) => <BBRow key={`d${i}`} p={typeof p === "string" ? { point: p } : p} up={false} s={s} open={open} />)}</ul>
+    </div>
   );
 }
 

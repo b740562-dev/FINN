@@ -512,3 +512,22 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .pm-foot a { color: var(--muted); text-decoration: underline; }
 
 .panel[id] { scroll-margin-top: 76px; }
+
+/* bull / bear as stat tiles */
+.bb3 ul { list-style: none; display: grid; gap: 8px; }
+.bbh { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; margin: 2px 0 8px; }
+.bbh.dn { margin-top: 14px; }
+.bbrow { display: grid; grid-template-columns: 104px 1fr; gap: 12px; align-items: center; padding: 10px 12px;
+         border-radius: 16px; border: 1px solid var(--line); cursor: pointer; }
+.bbrow.bull { background: linear-gradient(90deg, rgba(91,227,143,0.10), rgba(255,255,255,0.02) 60%); }
+.bbrow.bear { background: linear-gradient(90deg, rgba(255,122,110,0.10), rgba(255,255,255,0.02) 60%); }
+.bbstat { display: flex; flex-direction: column; min-width: 0; }
+.bbstat b { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap; }
+.bull .bbstat b { color: var(--up); text-shadow: 0 0 16px rgba(91,227,143,0.35); }
+.bear .bbstat b { color: var(--dn); text-shadow: 0 0 16px rgba(255,122,110,0.3); }
+.bbstat span { font-size: 10px; color: var(--muted); font-weight: 600; line-height: 1.25; margin-top: 2px;
+               display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.bbbody { min-width: 0; }
+.bbt { font-size: 13.5px; font-weight: 800; color: var(--ink); }
+.bbc { margin-top: 2px; }
+.bbp { margin-top: 6px; font-size: 12px; color: var(--muted); }

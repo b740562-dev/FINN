@@ -28,7 +28,7 @@ from finn.push.results import build_card, quarter_label
 
 VERSION = "v1"
 # Per-section versions: bumping one only invalidates that section's cache.
-SECTION_VERSION = {"promise_delivered": "v7", "snapshot": "v3"}   # v7: guidance pre-filter, computed periods, guards, YTD tracking
+SECTION_VERSION = {"promise_delivered": "v7", "snapshot": "v3", "bull_bear": "v2"}   # v7: guidance pre-filter, computed periods, guards, YTD tracking
 SECTIONS = ("snapshot", "health", "promise_delivered", "bull_bear")
 
 PRIMARY_ONLY = ("Use ONLY the numbered excerpts and numbers given below. Do not use any outside or background "
@@ -657,10 +657,12 @@ def promise_delivered(symbol: str) -> dict:
 
 # ---------------------------------------------------------------- bull/bear
 BB_POINT = {"type": "object", "properties": {
+    "title": {"type": "string"},
+    "stat": {"type": "string"},
     "point": {"type": "string"},
     "refs": {"type": "array", "items": {"type": "object", "properties": {
         "id": {"type": "string"}, "quote": {"type": "string"}}, "required": ["id", "quote"]}}},
-    "required": ["point", "refs"]}
+    "required": ["title", "stat", "point", "refs"]}
 BB_SCHEMA = {"type": "object", "properties": {"bull": {"type": "array", "items": BB_POINT},
                                               "bear": {"type": "array", "items": BB_POINT}},
              "required": ["bull", "bear"]}
@@ -683,7 +685,11 @@ def bull_bear(symbol: str) -> dict:
     numbers = "\n".join(f"[{k}] {v}" for k, v in nrefs.items())
     prompt = (f"Company: {f['name']}.\n{PRIMARY_ONLY}\n\nNUMBER FACTS\n{numbers}\n\n"
               + (f"DOCUMENT EXCERPTS\n{block}\n\n" if chunks else "")
-              + "Write a tight bull case and bear case: exactly 3 points each, each <= 25 words, specific, no hype. "
+              + "Write a tight bull case and bear case: exactly 3 points each, specific, no hype. For each point:\n"
+                "- title: 2-5 words naming the idea (e.g. 'Capital efficient', 'Margin squeeze', 'Order book visibility')\n"
+                "- stat: the ONE figure that proves it, as a short label + number copied from the cited facts or "
+                "excerpts (e.g. 'ROCE 36%', 'CFO 59% of PAT', 'D/E 0.0x'); '' if no single figure fits\n"
+                "- point: one sentence <= 20 words\n"
                 "Every point must cite at least one id from NUMBER FACTS (n#) or DOCUMENT EXCERPTS (c#). For c# ids "
                 "include a VERBATIM quote (8-30 words) copied exactly from that excerpt; for n# ids leave quote empty.")
     out = llm.generate_json("bull_bear", prompt, BB_SCHEMA, model=llm.REASON, thinking="medium",
@@ -691,28 +697,39 @@ def bull_bear(symbol: str) -> dict:
     cites: dict[str, dict] = {}
     dropped = 0
 
+    stats_dropped = 0
+
     def keep(points: list[dict]) -> list[dict]:
-        nonlocal dropped
+        nonlocal dropped, stats_dropped
         res = []
         for p in points:
-            ids = []
+            ids, support = [], []
             for r in p.get("refs", []):
                 rid = r["id"].strip("[] ")
                 if rid in nrefs:
                     cites.setdefault(rid, number_citation(rid, nrefs[rid]))
                     ids.append(rid)
+                    support.append(nrefs[rid])
                 elif rid in crefs and quote_in(r.get("quote", ""), crefs[rid].content):
                     cites.setdefault(rid, citation(rid, crefs[rid], r["quote"]))
                     ids.append(rid)
+                    support.append(crefs[rid].content)
                 else:
                     dropped += 1
-            if ids:
-                res.append({"point": p["point"], "citation_ids": sorted(set(ids))})
+            if not ids:
+                continue
+            # The headline stat must be backed by what this point cites; otherwise show no stat.
+            stat = (p.get("stat") or "").strip()
+            if stat and (not re.search(r"\d", stat) or not _numbers_ok(stat, " ".join(support))):
+                stats_dropped += 1
+                stat = ""
+            res.append({"title": (p.get("title") or "").strip()[:48], "stat": stat[:40], "point": p["point"],
+                        "citation_ids": sorted(set(ids))})
         return res[:3]
 
     content = {"bull": keep(out.get("bull", [])), "bear": keep(out.get("bear", [])),
                "basis": "numbers + documents" if chunks else "numbers only (no documents uploaded)",
-               "verification": {"dropped_refs": dropped}}
+               "verification": {"dropped_refs": dropped, "stats_dropped": stats_dropped}}
     return _env("bull_bear", "ready", llm.REASON, content, list(cites.values()))
 
 
