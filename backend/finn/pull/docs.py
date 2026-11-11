@@ -105,18 +105,32 @@ def chunk_page(text: str, page_no: int) -> list[tuple[int, str]]:
     return [(page_no, c) for c in chunks]
 
 
+_RETRY_IN = re.compile(r"retry(?:Delay'?:?\s*'?| in )(\d+(?:\.\d+)?)s", re.I)
+
+
+def _rate_limit_wait(err: Exception, attempt: int) -> float:
+    """Free-tier quotas are per minute. Honour the delay Google returns when
+    it gives one; otherwise back off 15s, 30s, then a full minute."""
+    msg = str(err)
+    if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+        m = _RETRY_IN.search(msg)
+        return float(m.group(1)) + 2 if m else min(15 * (2 ** attempt), 65)
+    return 4 * (attempt + 1)
+
+
 def _embed_all(texts: list[str]) -> list[list[float]]:
     vecs: list[list[float]] = []
     for i in range(0, len(texts), EMBED_BATCH):
         batch = texts[i:i + EMBED_BATCH]
-        for attempt in range(5):
+        for attempt in range(8):
             try:
                 vecs.extend(llm.embed(batch, task_type="RETRIEVAL_DOCUMENT"))
                 break
-            except Exception:
-                if attempt == 4:
+            except Exception as e:
+                if attempt == 7:
                     raise
-                time.sleep(4 * (attempt + 1))   # free-tier rate limits
+                time.sleep(_rate_limit_wait(e, attempt))
+        time.sleep(0.4)   # pace batches so a large annual report doesn't burn a minute's quota at once
     return vecs
 
 

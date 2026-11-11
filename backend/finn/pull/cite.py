@@ -22,9 +22,17 @@ def quote_in(quote: str, text: str) -> bool:
         return False
     if q in t:
         return True
+    # PDF text layers often break spacing ("15 %", "crore s", "1 , 600"). Compare
+    # with all spacing/punctuation removed: still exact on every letter and digit.
+    if _squash(quote) in _squash(text):
+        return True
     # tolerate an elided middle ("...") by requiring every long fragment to match
     parts = [p.strip() for p in re.split(r"\.\.\.|…", quote) if len(p.strip()) >= 12]
-    return bool(parts) and all(_norm(p) in t for p in parts)
+    return bool(parts) and all(_norm(p) in t or _squash(p) in _squash(text) for p in parts)
+
+
+def _squash(s: str) -> str:
+    return re.sub(r"[^a-z0-9%₹]", "", _norm(s))
 
 
 def chunk_block(chunks: list[Chunk], prefix: str = "c") -> tuple[str, dict[str, Chunk]]:

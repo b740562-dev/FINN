@@ -22,11 +22,13 @@ from datetime import date, datetime, timezone
 
 from finn import llm
 from finn.db import cursor
-from finn.pull.cite import chunk_block, citation, number_citation, quote_in
+from finn.pull.cite import chunk_block, citation, number_citation, quote_in, _squash
 from finn.pull.retrieve import Chunk, documents, search
 from finn.push.results import build_card, quarter_label
 
 VERSION = "v1"
+# Per-section versions: bumping one only invalidates that section's cache.
+SECTION_VERSION = {"promise_delivered": "v7"}   # v7: guidance pre-filter, computed periods, guards, YTD tracking
 SECTIONS = ("snapshot", "health", "promise_delivered", "bull_bear")
 
 PRIMARY_ONLY = ("Use ONLY the numbered excerpts and numbers given below. Do not use any outside or background "
@@ -301,9 +303,11 @@ VERDICT_SCHEMA = {
     "type": "object",
     "properties": {"assessments": {"type": "array", "items": {"type": "object", "properties": {
         "id": {"type": "string"},
+        "company_level": {"type": "boolean"},
+        "tracking": {"type": "string", "enum": ["ahead", "on_track", "behind", "n/a"]},
         "verdict": {"type": "string", "enum": ["hit", "partial", "missed", "pending", "unverifiable"]},
         "actual": {"type": "string"}, "explanation": {"type": "string"}},
-        "required": ["id", "verdict", "actual", "explanation"]}}},
+        "required": ["id", "company_level", "tracking", "verdict", "actual", "explanation"]}}},
     "required": ["assessments"],
 }
 
@@ -362,6 +366,153 @@ def _numbers_ok(text: str, allowed_text: str) -> bool:
     return True
 
 
+_FWD = re.compile(r"\b(guid\w*|outlook|we expect|expect(?:ing|ed)? (?:to|that)|target\w*|aim\w*|going forward|"
+                  r"next (?:year|quarter|few quarters|fiscal)|FY\s?'?2[6-9]|H[12]\b|second half|full year|"
+                  r"will (?:be|grow|improve|deliver|reach|cross)|should (?:be|grow)|trajectory|run[- ]rate|"
+                  r"double[- ]digit|mid[- ]teens|high[- ]single|range of|band of|order inflow|capex)", re.I)
+_QUANT = re.compile(r"\d+(?:\.\d+)?\s?(?:%|percent|bps|basis points|crore|cr\b|billion|bn\b|million)|"
+                    r"double[- ]digit|mid[- ]teens|high[- ]single|low[- ]teens", re.I)
+_BOILER = re.compile(r"registered (?:&|and) corporate office|MANAGEMENT:|Ladies and gentlemen|"
+                     r"forward[- ]looking statements|safe harbou?r|this transcript", re.I)
+
+
+def _guidance_chunks(doc_id: int, limit: int = 30) -> list[Chunk]:
+    """Deterministic pre-filter: the passages of a transcript most likely to
+    hold guidance (forward-looking language + a number or range), minus the
+    cover letter / disclaimer boilerplate. Cheap, and far more reliable than
+    semantic search for this (which tends to return the cover page)."""
+    with cursor(commit=False) as c:
+        c.execute("""select dc.id, dc.document_id, d.label, d.kind, d.period::text, dc.page, dc.content
+                     from public.doc_chunks dc join public.documents d on d.id = dc.document_id
+                     where dc.document_id = %s order by dc.chunk_index""", (doc_id,))
+        rows = c.fetchall()
+    scored = []
+    for cid, did, label, kind, period, page, text in rows:
+        fwd, qnt = len(_FWD.findall(text)), len(_QUANT.findall(text))
+        s = 2 * min(fwd, 4) + 2 * min(qnt, 3) + (3 if fwd and qnt else 0) - (8 if _BOILER.search(text) else 0)
+        if s >= 4:
+            scored.append((s, cid, did, label, kind, period, page, text))
+    top = sorted(scored, key=lambda x: x[0], reverse=True)[:limit]
+    return [Chunk(chunk_id=cid, document_id=did, doc_label=label, kind=kind, period=period, page=page,
+                  content=text, score=float(s))
+            for s, cid, did, label, kind, period, page, text in sorted(top, key=lambda x: x[1])]
+
+
+_VAGUE = re.compile(r"medium[- ]term|mid[- ]?term|long[- ]term|near[- ]term|future|years?\b|next few|upcoming|"
+                    r"coming quarters|over time|with scale|eventually|gradual", re.I)
+
+
+def _fyq(label: str) -> tuple[int, int] | None:
+    """'Q2 FY27' / 'Q2 FY27 concall' -> (27, 2)."""
+    m = re.search(r"Q([1-4])\s*FY\s*'?(\d{2,4})", label or "", re.I)
+    return (int(m.group(2)[-2:]), int(m.group(1))) if m else None
+
+
+def _period_status(period: str, said_in: str, latest: tuple[int, int] | None) -> str:
+    """Has the target period been fully reported? 'complete' | 'future' | 'unknown'.
+    Deterministic, so a model can't judge FY27 guidance against FY26 numbers."""
+    if not latest or not period:
+        return "unknown"
+    p = period.strip()
+    said = _fyq(said_in)
+    ly, lq = latest
+
+    def done(fy: int, q: int) -> str:
+        return "complete" if (fy, q) <= (ly, lq) else "future"
+
+    if m := re.search(r"\bQ([1-4])\s*FY\s*'?(\d{2,4})", p, re.I):
+        return done(int(m.group(2)[-2:]), int(m.group(1)))
+    if m := re.search(r"\bH([12])\s*FY\s*'?(\d{2,4})", p, re.I):
+        return done(int(m.group(2)[-2:]), 2 if m.group(1) == "1" else 4)
+    if m := re.search(r"\bH([12])\b|(first|second) half", p, re.I):
+        if said:
+            half = "1" if (m.group(1) == "1" or (m.group(2) or "").lower() == "first") else "2"
+            return done(said[0], 2 if half == "1" else 4)
+    if m := re.search(r"FY\s*'?(\d{2,4})", p, re.I):
+        return done(int(m.group(1)[-2:]), 4)
+    if re.search(r"next quarter", p, re.I) and said:
+        fy, q = said
+        return done(fy + (q == 4), 1 if q == 4 else q + 1)
+    if re.search(r"next (fiscal )?year", p, re.I) and said:
+        return done(said[0] + 1, 4)
+    if re.search(r"full year|this year|the year|current year|for the year", p, re.I) and said:
+        return done(said[0], 4)
+    if _VAGUE.search(p):
+        return "future"
+    return "unknown"
+
+
+def _target_key(period: str, said_in: str):
+    """Resolve a target period to ('Q', fy, q) | ('H', fy, half) | ('FY', fy) | None."""
+    p, said = (period or "").strip(), _fyq(said_in)
+    if m := re.search(r"\bQ([1-4])\s*FY\s*'?(\d{2,4})", p, re.I):
+        return ("Q", int(m.group(2)[-2:]), int(m.group(1)))
+    if m := re.search(r"\bH([12])\s*FY\s*'?(\d{2,4})", p, re.I):
+        return ("H", int(m.group(2)[-2:]), int(m.group(1)))
+    if (m := re.search(r"\bH([12])\b|(first|second) half", p, re.I)) and said:
+        return ("H", said[0], 1 if (m.group(1) == "1" or (m.group(2) or "").lower() == "first") else 2)
+    if m := re.search(r"FY\s*'?(\d{2,4})", p, re.I):
+        return ("FY", int(m.group(1)[-2:]))
+    if re.search(r"next quarter", p, re.I) and said:
+        fy, q = said
+        return ("Q", fy + (q == 4), 1 if q == 4 else q + 1)
+    if re.search(r"next (fiscal )?year", p, re.I) and said:
+        return ("FY", said[0] + 1)
+    if re.search(r"full year|this year|the year|current year|for the year", p, re.I) and said:
+        return ("FY", said[0])
+    return None
+
+
+def _actual_matches_period(actual: str, period: str, said_in: str) -> bool:
+    """If the 'actual' names periods, at least one must be the target period.
+    Stops e.g. FY26 guidance being scored with FY25 numbers."""
+    key = _target_key(period, said_in)
+    if not key:
+        return True
+    qs = [(int(y[-2:]), int(q)) for q, y in re.findall(r"\bQ([1-4])\s*FY\s*'?(\d{2,4})", actual or "", re.I)]
+    fys = [int(y[-2:]) for y in re.findall(r"(?<!Q[1-4] )\bFY\s*'?(\d{2,4})\b", actual or "", re.I)]
+    if not qs and not fys:
+        return True   # nothing to check against
+    if key[0] == "Q":
+        return (key[1], key[2]) in qs
+    if key[0] == "H":
+        rng = (1, 2) if key[2] == 1 else (3, 4)
+        return any(fy == key[1] and q in rng for fy, q in qs) or key[1] in fys
+    return key[1] in fys or any(fy == key[1] for fy, _ in qs)
+
+
+def _extract_promises(symbol: str, company: str, d: dict) -> list[tuple[dict, Chunk | None, bool]]:
+    """Guidance statements from one transcript: [(promise, cited chunk, quote verified?)]."""
+    chunks = _guidance_chunks(d["id"])
+    seen = {ch.chunk_id for ch in chunks}
+    for q in ("guidance outlook we expect growth for the year", "margin band EBITDA margin expect range"):
+        for ch in search(symbol, q, k=4, document_ids=[d["id"]]):   # semantic backstop
+            if ch.chunk_id not in seen and not _BOILER.search(ch.content):
+                seen.add(ch.chunk_id)
+                chunks.append(ch)
+    if not chunks:
+        return []
+    block, refs = chunk_block(chunks)
+    prompt = (f"Company: {company}. Source: {d['label']} transcript.\n{PRIMARY_ONLY}\n\nExcerpts:\n{block}\n\n"
+              "List the forward-looking statements MANAGEMENT made (not analysts' questions) that can later be "
+              "checked against reported numbers: revenue/volume growth, margins, profit, capex, order inflow, or "
+              "other targets. Include explicit numbers and ranges (e.g. '12-14% growth', '27% EBITDA margin') AND "
+              "checkable directional guidance (e.g. 'double-digit growth', 'H2 better than H1', 'margins to "
+              "improve from here'). Skip vague optimism with no checkable claim. Max 6. For each: the excerpt id "
+              "and a VERBATIM quote (10-35 words) copied exactly from it; target as stated; target_period like "
+              "'FY27', 'H2 FY27', 'Q3 FY27', 'next 2-3 years'.")
+    out = llm.generate_json("promise_extract", prompt, PROMISE_SCHEMA, model=llm.BULK, thinking="low",
+                            ref_type="document", ref_id=str(d["id"]))
+    res = []
+    for p in out.get("promises", []):
+        ch = refs.get(str(p.get("cite", "")).strip("[] "))   # model often writes "[c8]"
+        # The model sometimes cites the wrong excerpt id: accept the quote if it is verbatim in ANY excerpt.
+        if ch is None or not quote_in(p["quote"], ch.content):
+            ch = next((c for c in chunks if quote_in(p["quote"], c.content)), None)
+        res.append((p, ch, ch is not None))
+    return res
+
+
 def promise_delivered(symbol: str) -> dict:
     f = _fund(symbol)
     transcripts = [d for d in documents(symbol) if d["kind"] == "transcript"][:4]
@@ -369,35 +520,26 @@ def promise_delivered(symbol: str) -> dict:
         return _env("promise_delivered", "needs_docs", None,
                     {"reason": "Upload the last 4 concall transcripts to compare guidance with delivery.",
                      "score": None, "items": []}, [])
-    promises, cites, dropped = [], {}, 0
+    promises, cites, dropped, seen_quotes = [], {}, 0, set()
     for d in transcripts:
-        chunks: list[Chunk] = []
-        seen = set()
-        for q in ("guidance outlook we expect target growth for the year", "margin band EBITDA margin expect range",
-                  "capex investment capacity plan crore"):
-            for ch in search(symbol, q, k=5, document_ids=[d["id"]]):
-                if ch.chunk_id not in seen:
-                    seen.add(ch.chunk_id)
-                    chunks.append(ch)
-        if not chunks:
-            continue
-        block, refs = chunk_block(chunks)
-        prompt = (f"Company: {f['name']}. Source: {d['label']} transcript.\n{PRIMARY_ONLY}\n\nExcerpts:\n{block}\n\n"
-                  "List explicit, quantifiable forward-looking statements made by MANAGEMENT (not analysts' "
-                  "questions) about headline numbers: revenue or volume growth, margins, profit growth, capex, or "
-                  "other numeric targets. Skip vague optimism. Max 5. For each: the excerpt id and a VERBATIM quote "
-                  "(10-35 words) copied exactly from it; target_period like 'FY27', 'Q3 FY27', 'next 2-3 years'.")
-        out = llm.generate_json("promise_extract", prompt, PROMISE_SCHEMA, model=llm.BULK, thinking="low",
-                                ref_type="document", ref_id=str(d["id"]))
-        for p in out.get("promises", []):
-            ch = refs.get(p["cite"])
-            if not ch or not quote_in(p["quote"], ch.content):
+        extracted = _extract_promises(symbol, f["name"], d)
+        # Checkable promises first: an explicit number in the target, then a concrete period.
+        extracted.sort(key=lambda x: (not re.search(r"\d", str(x[0].get("target", ""))),
+                                      _target_key(str(x[0].get("target_period", "")), d["label"]) is None))
+        kept_here = 0
+        for p, ch, ok in extracted:
+            if not ok:
                 dropped += 1
                 continue
+            key = _squash(p["quote"])
+            if key in seen_quotes or kept_here >= 5:   # no repeats; keep older calls represented
+                continue
+            seen_quotes.add(key)
+            kept_here += 1
             cid = f"c{len(cites) + 1}"
             cites[cid] = citation(cid, ch, p["quote"])
             promises.append({**p, "said_in": d["label"], "citation_id": cid})
-    promises = promises[:12]
+    promises = promises[:18]
     if not promises:
         return _env("promise_delivered", "ready", llm.BULK,
                     {"score": {k: 0 for k in ("hit", "partial", "missed", "pending", "unverifiable")},
@@ -405,31 +547,68 @@ def promise_delivered(symbol: str) -> dict:
                      "verification": {"dropped_quotes": dropped}}, list(cites.values()))
 
     actuals = _actuals_table(f["tables"])
+    cols = f["tables"].get("quarters", {}).get("columns", [])
+    latest = _fyq(quarter_label(cols[-1])) if cols else None          # e.g. (27, 2) for Q2 FY27
+    for p in promises:
+        p["period_status"] = _period_status(p["target_period"], p["said_in"], latest)
+    status_txt = {"future": "NOT YET FULLY REPORTED", "complete": "fully reported", "unknown": "unclear"}
     plist = "\n".join(f"p{i + 1}: [{p['said_in']}] {p['metric']}: {p['statement']} | target: {p['target']} | "
-                      f"period: {p['target_period']}" for i, p in enumerate(promises))
+                      f"period: {p['target_period']} ({status_txt[p['period_status']]})" for i, p in enumerate(promises))
+    latest_txt = f"Q{latest[1]} FY{latest[0]}" if latest else "n/a"
     prompt = (f"Company: {f['name']}.\n{PRIMARY_ONLY}\n\nMANAGEMENT PROMISES\n{plist}\n\nREPORTED NUMBERS\n{actuals}\n\n"
+              f"Latest reported quarter: {latest_txt}. Each promise's period status was computed from that.\n"
               "For each promise decide: hit (delivered at/above target), partial (close or part-delivered), missed, "
               "pending (target period not fully reported yet), or unverifiable (no matching reported metric, e.g. "
-              "segment or volume data not in the table). 'actual' must quote numbers ONLY from REPORTED NUMBERS "
-              "(or be 'n/a'). explanation <= 30 words, plain and specific.")
+              "segment, store, client or volume data not in the table). Only judge a period against numbers FOR "
+              "THAT PERIOD, never an earlier year. For a period NOT YET FULLY REPORTED, the verdict is pending, and "
+              "tracking says whether the reported quarters of that period so far are ahead of, on track for, or "
+              "behind the target (n/a if no quarters of that period are reported or it isn't a table metric); "
+              "'actual' may show the reported quarters so far (e.g. 'H1 FY27 margin 19.8%, tracking below'). "
+              "'actual' must quote numbers ONLY from REPORTED NUMBERS (or be 'n/a'), and name the period each number "
+              "is for (e.g. 'Q4 FY26', 'FY26'). company_level: true only if the promise is about a whole-company "
+              "metric in the table (revenue, EBITDA/OPM margin, PAT, capex); false for a segment, product, "
+              "geography, client, store count or order inflow. explanation <= 30 words.")
     out = llm.generate_json("promise_verdict", prompt, VERDICT_SCHEMA, model=llm.REASON, thinking="medium",
                             ref_type="company", ref_id=symbol)
     by_id = {a["id"]: a for a in out.get("assessments", [])}
-    items, guarded = [], 0
+    items, guarded, corrected = [], 0, 0
     for i, p in enumerate(promises):
         a = by_id.get(f"p{i + 1}") or {"verdict": "unverifiable", "actual": "n/a", "explanation": "Not assessed."}
         verdict, actual, expl = a["verdict"], a["actual"], a["explanation"]
         if not _numbers_ok(actual, actuals + " " + p["target"]):
             guarded += 1
             verdict, actual, expl = "unverifiable", "n/a", "Could not match the claimed actual to reported numbers."
+        # Calendar logic is computed, not generated: a period that isn't over can't be hit or missed,
+        # and a hit/miss needs an actual number behind it.
+        if p["period_status"] == "future" and verdict in ("hit", "missed", "partial"):
+            corrected += 1
+            expl = f"{p['target_period']} isn't fully reported yet (latest: {latest_txt}). " + expl
+            verdict = "pending"
+        if verdict in ("hit", "missed", "partial") and actual.strip().lower() in ("n/a", "na", "", "none"):
+            corrected += 1
+            verdict, expl = "unverifiable", "No reported metric matches this target."
+        if verdict in ("hit", "missed", "partial") and a.get("company_level") is False:
+            corrected += 1
+            verdict, expl = "unverifiable", "A segment/product-level target; only company-level numbers are reported."
+        if verdict in ("hit", "missed", "partial") and not _actual_matches_period(actual, p["target_period"],
+                                                                                 p["said_in"]):
+            corrected += 1
+            verdict, expl = "unverifiable", f"The reported numbers cited aren't for {p['target_period']}."
+        # Year-to-date read for unfinished periods, only when backed by numbers for that same period.
+        tracking = a.get("tracking", "n/a")
+        if (verdict != "pending" or a.get("company_level") is False or actual.strip().lower() in ("n/a", "na", "")
+                or not _actual_matches_period(actual, p["target_period"], p["said_in"])
+                or _target_key(p["target_period"], p["said_in"]) is None):
+            tracking = "n/a"
         items.append({"promise": p["statement"], "said_in": p["said_in"], "metric": p["metric"], "target": p["target"],
                       "target_period": p["target_period"], "actual": actual, "verdict": verdict, "explanation": expl,
-                      "citation_id": p["citation_id"]})
+                      "tracking": tracking, "citation_id": p["citation_id"]})
     score = {k: sum(1 for x in items if x["verdict"] == k) for k in ("hit", "partial", "missed", "pending",
                                                                        "unverifiable")}
     return _env("promise_delivered", "ready", llm.REASON,
                 {"score": score, "items": items, "transcripts_used": [d["label"] for d in transcripts],
-                 "verification": {"dropped_quotes": dropped, "actuals_guarded": guarded}}, list(cites.values()))
+                 "verification": {"dropped_quotes": dropped, "actuals_guarded": guarded,
+                                  "verdicts_corrected": corrected}}, list(cites.values()))
 
 
 # ---------------------------------------------------------------- bull/bear
@@ -509,7 +688,7 @@ def inputs_hash(symbol: str, section: str) -> str:
         c.execute("select coalesce(string_agg(sha256, ',' order by sha256), '') from public.documents "
                   "where symbol = %s", (symbol,))
         docs = c.fetchone()[0]
-    return hashlib.sha256(f"{VERSION}|{section}|{r[0] if r else ''}|{docs}".encode()).hexdigest()
+    return hashlib.sha256(f"{SECTION_VERSION.get(section, VERSION)}|{section}|{r[0] if r else ''}|{docs}".encode()).hexdigest()
 
 
 def get_section(symbol: str, section: str, force: bool = False) -> dict:

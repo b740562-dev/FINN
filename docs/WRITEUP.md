@@ -36,14 +36,25 @@ FINN is a mobile-first PWA for an investor holding an 18-stock NSE portfolio. It
    - One-liners are rejected if any number in them isn't in the filing. This caught a real 10× crore/million slip.
    - Bios drop any organisation not present in their sources.
    - Research quotes are verified against the cited chunk.
-4. **Primary sources only on the pull side**, as the brief asked. Web search is used for exactly one thing: the incoming executive's background on the push side.
-5. **Data access, honestly.**
+4. **Promise vs delivered: the model reads, code keeps time.** Run on real transcripts (BEL, Titan, Asian Paints, KPIT), the first version failed in instructive ways:
+   - Semantic search returned the transcript's cover page instead of management's outlook.
+   - Half the genuine quotes were rejected because the PDF text layer breaks spacing ("15 %", "crore s").
+   - The model scored FY27 guidance against FY26 numbers.
+   
+   Fixes:
+   - A deterministic pre-filter picks forward-looking passages that contain numbers.
+   - Quote checks ignore spacing but stay exact on every letter and digit.
+   - **Whether a target period has been reported is computed, not generated.** A guard rejects any "actual" cited for a different period.
+   - Segment claims are marked unverifiable rather than judged on company totals.
+   - Unfinished periods get a year-to-date read: BEL's "15%+ revenue growth" is *tracking ahead* at +25%/+27% in H1, while KPIT's FY27 margin guide of 20.5–21.2% is *tracking behind* at ~15.5%.
+5. **Primary sources only on the pull side**, as the brief asked. Web search is used for exactly one thing: the incoming executive's background on the push side.
+6. **Data access, honestly.**
    - BSE's and NSE's APIs and PDF hosts refuse non-browser clients. I chose not to imitate a browser to get past that.
    - Screener.in became the filing index and the source of reported financials.
    - Annual reports and transcripts are uploaded, in-app or via a drop folder.
    - The trade-off: unseen tickers get numbers-based research instantly, and document-based sections once their PDFs are added.
-6. **Built for the networks graders actually use.** Some Indian ISPs block `*.supabase.co` and render.com. The browser reaches Supabase only through the app's own domain (a server-side rewrite), so sign-in works on those networks. Research pages are pre-built after each refresh, so nobody waits on a cold model call. Uploads run as background jobs, and only saved accounts can change the shared document library.
-7. **Guest-first auth.** "Try as guest" gets a seeded, fully working account in about 2 seconds with nothing to fill in. Row-level security isolates each user, and a guest can upgrade to email later.
+7. **Built for the networks graders actually use.** Some Indian ISPs block `*.supabase.co` and render.com. The browser reaches Supabase only through the app's own domain (a server-side rewrite), so sign-in works on those networks. Research pages are pre-built after each refresh, so nobody waits on a cold model call. Uploads run as background jobs, and only saved accounts can change the shared document library.
+8. **Guest-first auth.** "Try as guest" gets a seeded, fully working account in about 2 seconds with nothing to fill in. Row-level security isolates each user, and a guest can upgrade to email later.
 
 ## What I left out, deliberately
 

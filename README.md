@@ -60,6 +60,7 @@ Next.js PWA (Vercel) ──Bearer JWT──▶ FastAPI (Render) ──▶ Supaba
   - Documents are shared by every user, so **only saved (non-guest) accounts can upload**. One bad upload shouldn't change everyone's research.
   - Uploads run as **background jobs** (read → index → analyse) that the app polls, so a 300-page annual report never hits a request timeout.
   - The job finishes by rebuilding Promise vs Delivered, so it's ready when the user looks.
+- **Primary documents loaded:** BEL, TITAN, ASIANPAINT and KPITTECH each have 4 concall transcripts and their FY26 annual report (20 PDFs; annual reports trimmed to their ~120 most relevant pages). `scripts/doc_downloads.py` builds the click-list of BSE links and files the downloads automatically.
 - **Research is pre-built.** After each refresh, `finn.pull.prewarm` rebuilds any company whose reported numbers or documents changed. Everything else stays cached, so no one waits on a cold dossier.
 - **Exec bios:** Tavily search (push-side enrichment only; never used for research).
 - **Network blocks:** some Indian ISPs block `*.supabase.co` (and render.com). The browser never calls Supabase directly. `/sb/*` on the app's own domain is rewritten server-side to the project (`web/next.config.ts`), so sign-in works on those networks too.

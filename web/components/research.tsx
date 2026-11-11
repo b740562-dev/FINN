@@ -186,6 +186,8 @@ export function PromiseView({ s, open }: { s: Section<Any>; open: (c: Citation) 
   if (s.status === "needs_docs") return <NeedsDocs what="Promise vs delivered compares what management guided on its calls with what it then reported." />;
   const sc = s.content?.score ?? {};
   const items: Any[] = s.content?.items ?? [];
+  const track = (t: string) => items.filter((i) => i.verdict === "pending" && i.tracking === t).length;
+  const TRACK: Record<string, [string, string]> = { ahead: ["v-hit", "tracking ahead"], on_track: ["v-hit", "on track"], behind: ["v-missed", "tracking behind"] };
   return (
     <>
       <div className="score">
@@ -193,12 +195,23 @@ export function PromiseView({ s, open }: { s: Section<Any>; open: (c: Citation) 
           <span key={k} className={`v-${k}`}>{sc[k]} {k}</span>
         ))}
       </div>
+      {(track("ahead") + track("on_track") + track("behind")) > 0 && (
+        <p className="sub" style={{ margin: "-4px 0 10px", fontSize: 11.5 }}>
+          Of the pending targets, year to date: <b className="up">{track("ahead") + track("on_track")} on or ahead of plan</b>
+          {track("behind") ? <>, <b className="dn">{track("behind")} behind</b></> : null}.
+        </p>
+      )}
       {items.length === 0 && <p className="needs">No explicit, quantified guidance found in the transcripts provided.</p>}
       {items.map((it, i) => (
         <div className="promise" key={i}>
           <div className="top">
             <q>{it.promise}</q>
-            <span className={`pv v-${it.verdict}`}>{it.verdict}</span>
+            <span style={{ display: "grid", gap: 4, justifyItems: "end" }}>
+              <span className={`pv v-${it.verdict}`}>{it.verdict}</span>
+              {it.verdict === "pending" && TRACK[it.tracking] && (
+                <span className={`pv ${TRACK[it.tracking][0]}`} style={{ fontSize: 9 }}>{TRACK[it.tracking][1]}</span>
+              )}
+            </span>
           </div>
           <dl className="vs">
             <dt>SAID</dt><dd>{it.said_in}<CiteIds ids={it.citation_id ?? it.citation_ids} cites={s.citations} open={open} /></dd>
