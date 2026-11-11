@@ -39,12 +39,15 @@ def load_company(symbol: str) -> dict:
     page = fetch_company(symbol)
     with cursor() as c:
         c.execute(
-            """insert into public.companies (symbol, name, bse_code, screener_id, sector, basis, updated_at)
-               values (%s, %s, %s, %s, %s, %s, now())
+            """insert into public.companies (symbol, name, bse_code, screener_id, sector, basis,
+                                             market_cap_cr, updated_at)
+               values (%s, %s, %s, %s, %s, %s, %s, now())
                on conflict (symbol) do update set name = excluded.name, bse_code = excluded.bse_code,
                  screener_id = excluded.screener_id, sector = coalesce(excluded.sector, companies.sector),
-                 basis = excluded.basis, updated_at = now()""",
-            (symbol, page.name, page.bse_code, page.screener_id, SECTOR.get(symbol), page.basis),
+                 basis = excluded.basis, market_cap_cr = coalesce(excluded.market_cap_cr, companies.market_cap_cr),
+                 updated_at = now()""",
+            (symbol, page.name, page.bse_code, page.screener_id, SECTOR.get(symbol), page.basis,
+             page.market_cap_cr),
         )
         c.execute(
             """insert into public.fundamentals (symbol, basis, tables, fetched_at)
