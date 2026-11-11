@@ -9,6 +9,7 @@ import { crore } from "@/lib/format";
 import { useData } from "@/components/data";
 import { useAuth } from "@/components/auth";
 import { BullBearView, Cited, HealthView, PromiseView, SectionShell, SnapshotView, useCiteSheet } from "@/components/research";
+import { ProfileButton } from "@/components/profile-menu";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
@@ -141,7 +142,8 @@ function Dossier() {
   if (ovErr) {
     return (
       <>
-        <header className="topbar"><div className="brand"><Link href="/research" className="logo">‹ {symbol}</Link></div></header>
+        <header className="topbar">
+        <ProfileButton /><div className="brand"><Link href="/research" className="logo">‹ {symbol}</Link></div></header>
         <div className="empty"><b>Couldn&apos;t open {symbol}.</b>{ovErr}
           <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
             <button className="btn primary" onClick={() => window.location.reload()}>TRY AGAIN</button>
@@ -155,6 +157,7 @@ function Dossier() {
   return (
     <>
       <header className="topbar">
+        <ProfileButton />
         <div className="brand">
           <Link href="/research" className="logo" style={{ fontSize: 17 }}>‹ {symbol}</Link>
           <span className="when">{held ? `in your book · ${held.weight}%` : "research"}</span>

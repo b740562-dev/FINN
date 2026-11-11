@@ -6,6 +6,7 @@ import { api, post } from "@/lib/api";
 import type { Alert } from "@/lib/types";
 import { inr, pct, tone } from "@/lib/format";
 import { useData } from "@/components/data";
+import { ProfileButton } from "@/components/profile-menu";
 
 const CAT: Record<string, string> = {
   results: "Results", "M&A": "M&A", fund_raise: "Fund raise", management_change: "Management", litigation: "Legal",
@@ -94,6 +95,7 @@ export default function Alerts() {
   return (
     <>
       <header className="topbar">
+        <ProfileButton />
         <div className="brand">
           <span className="logo">ALERTS</span>
           {items && items.some((a) => !a.read) && <button className="link" onClick={markAll}>MARK ALL READ</button>}

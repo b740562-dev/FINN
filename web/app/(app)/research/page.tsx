@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useData } from "@/components/data";
+import { ProfileButton } from "@/components/profile-menu";
 
 type Co = { symbol: string; name: string; sector: string | null; market_cap_cr: number | null };
 const RESEARCH_SET = ["BEL", "TITAN", "ASIANPAINT", "KPITTECH"];
@@ -33,6 +34,7 @@ function Index() {
   return (
     <>
       <header className="topbar">
+        <ProfileButton />
         <div className="brand"><span className="logo">RESEARCH</span><span className="when">primary sources only</span></div>
         <form style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); if (q.trim()) router.push(`/research/${encodeURIComponent(q.trim().toUpperCase())}`); }}>
           <input className="txt" placeholder="Any NSE ticker · TCS, HAL, DMART" value={q} onChange={(e) => setQ(e.target.value)} />

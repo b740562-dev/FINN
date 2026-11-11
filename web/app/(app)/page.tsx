@@ -8,6 +8,7 @@ import { useData } from "@/components/data";
 import { EventCard, RoutineList } from "@/components/cards";
 import { BriefButton, briefScript } from "@/components/brief";
 import { PortfolioChart } from "@/components/portfolio-chart";
+import { ProfileButton } from "@/components/profile-menu";
 
 const WINDOWS = [
   { key: "24h", label: "24H", spoken: "last 24 hours" },
@@ -58,6 +59,7 @@ export default function Today() {
   return (
     <>
       <header className="topbar">
+        <ProfileButton />
         <div className="brand">
           <span className="logo">FINN<b>.</b></span>
           <span className="when">{dateLabel}{asOf ? " · replay" : " · EOD"}</span>

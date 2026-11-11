@@ -460,3 +460,55 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .feat span { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
 .prow .pm b .said { margin-left: 8px; font-size: 10px; font-weight: 700; color: var(--amber); background: var(--amber-bg);
                     padding: 1px 7px; border-radius: 999px; vertical-align: 1px; }
+
+/* ======================================================================
+   Profile menu (top-right avatar on every screen)
+   ====================================================================== */
+.topbar .brand { padding-right: 46px; }
+.avatar-btn { position: absolute; top: 9px; right: 14px; width: 36px; height: 36px; border-radius: 50%; z-index: 25;
+              display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;
+              color: #0a1a10; background: linear-gradient(135deg, #c6f45e, #7fe0a0); box-shadow: 0 0 0 2px rgba(198,244,94,0.25), var(--glow); }
+.avatar-btn.on { box-shadow: 0 0 0 3px rgba(198,244,94,0.55), var(--glow); }
+.avatar-btn .dotbadge { position: absolute; top: 0; right: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--dn);
+                        border: 2px solid var(--bg); }
+.pm-backdrop { position: fixed; inset: 0; z-index: 58; background: rgba(0,0,0,0.35); backdrop-filter: blur(2px); }
+.pm-panel { position: fixed; top: 56px; right: max(10px, calc(50vw - 240px + 10px)); width: min(320px, calc(100vw - 20px));
+            z-index: 60; border-radius: 22px; padding: 14px; border: 1px solid var(--line-2);
+            background: linear-gradient(180deg, rgba(20, 48, 34, 0.97), rgba(10, 26, 18, 0.97));
+            box-shadow: 0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+            animation: pm-in 0.14s ease-out; max-height: calc(100dvh - 72px); overflow: auto; }
+@keyframes pm-in { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
+.pm-head { display: flex; gap: 12px; align-items: center; }
+.pm-av { width: 44px; height: 44px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center;
+         font-weight: 800; font-size: 18px; color: #0a1a10; background: linear-gradient(135deg, #c6f45e, #7fe0a0); }
+.pm-name { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-sub { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.pm-tag { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--up-bg); color: var(--up); }
+.pm-tag.guest { background: var(--amber-bg); color: var(--amber); }
+.pm-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 14px; }
+.pm-stats div { background: rgba(255,255,255,0.04); border: 1px solid var(--line); border-radius: 14px; padding: 8px; text-align: center; }
+.pm-stats b { display: block; font-size: 15px; font-weight: 800; }
+.pm-stats span { font-size: 10px; color: var(--muted); font-weight: 600; }
+.pm-cta { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; margin-top: 10px; padding: 10px 12px;
+          border-radius: 14px; background: var(--amber-bg); border: 1px solid rgba(198,244,94,0.3); }
+.pm-cta > span { font-size: 18px; color: var(--amber); }
+.pm-cta b { display: block; font-size: 13px; color: var(--amber); }
+.pm-cta small { font-size: 11px; color: var(--muted); }
+.pm-list { margin-top: 10px; display: grid; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+.pm-list button { display: flex; align-items: center; gap: 10px; padding: 11px 12px; text-align: left; font-size: 13.5px; font-weight: 600;
+                  border-top: 1px solid var(--line); background: rgba(255,255,255,0.02); }
+.pm-list button:first-child { border-top: 0; }
+.pm-list button:hover { background: rgba(255,255,255,0.06); }
+.pm-list button > span { width: 20px; text-align: center; color: var(--amber); }
+.pm-list button em { margin-left: auto; font-style: normal; font-size: 11px; font-weight: 800; color: #0a1a10; background: var(--amber);
+                     border-radius: 999px; padding: 1px 7px; }
+.pm-list.danger button.out { color: var(--dn); }
+.pm-list.danger button.out > span { color: var(--dn); }
+.pm-confirm { padding: 10px 12px; font-size: 12.5px; background: rgba(255,255,255,0.03); }
+.pm-confirm div { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.pm-confirm div button { border: 1px solid var(--line-2); border-radius: 999px; padding: 5px 12px; font-size: 12px; }
+.pm-confirm div button.yes { background: var(--amber); color: #0a1a10; border: 0; font-weight: 800; }
+.pm-foot { margin-top: 12px; font-size: 10.5px; color: var(--dim); text-align: center; }
+.pm-foot a { color: var(--muted); text-decoration: underline; }
+
+.panel[id] { scroll-margin-top: 76px; }

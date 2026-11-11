@@ -7,6 +7,7 @@ import { inr } from "@/lib/format";
 import { useAuth } from "@/components/auth";
 import { useData } from "@/components/data";
 import { UsagePanel } from "@/components/usage";
+import { ProfileButton } from "@/components/profile-menu";
 
 const CAT_LABEL: Record<string, string> = {
   results: "Results", "M&A": "M&A", fund_raise: "Fund raise", management_change: "Mgmt change", litigation: "Legal",
@@ -81,6 +82,7 @@ export default function You() {
   return (
     <>
       <header className="topbar">
+        <ProfileButton />
         <div className="brand">
           <span className="logo">YOU</span>
           <span className="when">{isGuest ? "guest account" : session?.user.email}</span>
@@ -88,7 +90,7 @@ export default function You() {
       </header>
 
       <div className="sec"><span>── What counts as unusual</span></div>
-      <section className="panel">
+      <section className="panel" id="rules">
         <h3>Price &amp; volume alerts</h3>
         
         {rules ? (
@@ -130,7 +132,7 @@ export default function You() {
       </section>
 
       <div className="sec"><span>── Portfolio</span>{me && <span>{inr(me.totals.value, { compact: true })}</span>}</div>
-      <section className="panel">
+      <section className="panel" id="portfolio">
         {rows.map((r, i) => (
           <div className="hold" key={r.symbol}>
             <div><div className="tk">{r.symbol}</div><div className="co">{r.name}</div></div>
@@ -161,10 +163,10 @@ export default function You() {
       </section>
 
       <div className="sec"><span>── How FINN thinks</span></div>
-      <section className="panel"><UsagePanel /></section>
+      <section className="panel" id="usage"><UsagePanel /></section>
 
       <div className="sec"><span>── Account</span></div>
-      <section className="panel">
+      <section className="panel" id="account">
         {isGuest ? (
           <>
             <h3>You&apos;re using a guest account</h3>
@@ -185,7 +187,7 @@ export default function You() {
       </section>
 
       <div className="sec"><span>── Sources</span></div>
-      <section className="panel">
+      <section className="panel" id="sources">
         <div className="chiprow" style={{ margin: 0 }}>
           <span className="pill">EOD prices · Yahoo</span><span className="pill">Filings · NSE/BSE via screener</span>
           <span className="pill">Research · company documents only</span><span className="pill">Not investment advice</span>
