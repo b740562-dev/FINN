@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, post, put } from "@/lib/api";
+import { api, put } from "@/lib/api";
 import type { Holding, Rules } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { useAuth } from "@/components/auth";
@@ -33,6 +33,7 @@ export default function You() {
   const [rulesMsg, setRulesMsg] = useState<string | null>(null);
   const [rows, setRows] = useState<{ symbol: string; quantity: number; name?: string }[]>([]);
   const [holdMsg, setHoldMsg] = useState<string | null>(null);
+  const [confirmZero, setConfirmZero] = useState(false);
   const [addQ, setAddQ] = useState("");
   const [addSugg, setAddSugg] = useState<{ symbol: string; name: string }[]>([]);
   const isGuest = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous);
@@ -83,10 +84,17 @@ export default function You() {
     }
   }
 
-  async function resetDemo() {
-    await post("/holdings/reset");
-    setHoldMsg("Back to the 18-stock demo portfolio.");
-    refreshMe();
+  async function resetToZero() {
+    setConfirmZero(false);
+    setHoldMsg(null);
+    try {
+      await put("/holdings", []);
+      setRows([]);
+      setHoldMsg("Portfolio reset to 0. Add holdings above.");
+      refreshMe();
+    } catch (e) {
+      setHoldMsg((e as Error).message);
+    }
   }
 
   return (
@@ -192,7 +200,15 @@ export default function You() {
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
           <button className="btn primary" onClick={saveHoldings}>Save holdings</button>
-          <button className="btn ghost" onClick={resetDemo}>Reset to demo</button>
+          {confirmZero ? (
+            <span className="zero-confirm">
+              <span>Remove all {rows.length} holdings?</span>
+              <button className="btn ghost" onClick={() => setConfirmZero(false)}>Keep</button>
+              <button className="btn danger" onClick={resetToZero}>Reset to 0</button>
+            </span>
+          ) : (
+            <button className="btn ghost" onClick={() => setConfirmZero(true)} disabled={!rows.length}>Reset to 0</button>
+          )}
         </div>
         {holdMsg && <div className="ok">{holdMsg}</div>}
       </section>

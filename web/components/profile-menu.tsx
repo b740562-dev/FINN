@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { post } from "@/lib/api";
+import { put } from "@/lib/api";
 import { inr } from "@/lib/format";
 import { useAuth } from "./auth";
 import { initialsOf, profileCompleteness, useData } from "./data";
@@ -42,7 +42,7 @@ export function ProfileButton() {
   async function reset() {
     setBusy("reset");
     try {
-      await post("/holdings/reset");
+      await put("/holdings", []);
       await refreshMe();
       setConfirmReset(false);
       setOpen(false);
@@ -108,14 +108,14 @@ export function ProfileButton() {
             <div className="pm-list danger">
               {confirmReset ? (
                 <div className="pm-confirm">
-                  <span>Replace your holdings with the 18-stock demo portfolio?</span>
+                  <span>Remove all {me?.holdings.length ?? 0} holdings and reset your portfolio to ₹0?</span>
                   <div>
                     <button onClick={() => setConfirmReset(false)}>Cancel</button>
-                    <button className="yes" onClick={reset} disabled={busy === "reset"}>{busy === "reset" ? "…" : "Reset"}</button>
+                    <button className="yes" onClick={reset} disabled={busy === "reset"}>{busy === "reset" ? "…" : "Reset to 0"}</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setConfirmReset(true)}><span>↺</span>Reset demo portfolio</button>
+                <button onClick={() => setConfirmReset(true)} disabled={!me?.holdings.length}><span>↺</span>Reset portfolio to 0</button>
               )}
               <button className="out" onClick={out} disabled={busy === "out"}><span>⏻</span>{busy === "out" ? "Signing out…" : "Sign out"}</button>
             </div>

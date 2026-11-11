@@ -108,26 +108,58 @@ export function BioBlock({ bio, full = false, compact = false }: { bio: Bio; ful
   );
 }
 
+/** Importance tiers inside "routine" (all below the feed's cut-off). */
+const TIERS = [
+  { key: "look", label: "Worth a look", min: 25 },
+  { key: "minor", label: "Minor", min: 15 },
+  { key: "paper", label: "Paperwork", min: 0 },
+] as const;
+type Tier = (typeof TIERS)[number]["key"];
+
+function tierOf(m: number): Tier {
+  return (TIERS.find((t) => m >= t.min) ?? TIERS[2]).key;
+}
+
+/** Exchange boilerplate off the front of a headline. */
+function tidy(h: string) {
+  return h
+    .replace(/^(Announcement|Disclosure|Intimation)\s+under\s+(Regulation\s+30\s*)?(of\s+)?(SEBI\s*)?\(?LODR\)?(,?\s*Regulations,?\s*2015)?\s*[-–:]?\s*/i, "")
+    .replace(/_/g, " ")
+    .trim() || h;
+}
+
 export function RoutineList({ items, mix }: { items: DigestEvent[]; mix: Record<string, number> }) {
   const [open, setOpen] = useState(false);
+  void mix;
   const total = items.reduce((n, e) => n + 1 + e.related, 0);
   if (!total) return null;
-  const top = Object.entries(mix).slice(0, 3);
+  const counts: Record<Tier, number> = { look: 0, minor: 0, paper: 0 };
+  for (const e of items) counts[tierOf(e.materiality)] += 1 + e.related;
+  const sorted = [...items].sort((a, b) => b.materiality - a.materiality || b.filed_at.localeCompare(a.filed_at));
   return (
     <div className="routine">
       <button onClick={() => setOpen(!open)} aria-expanded={open}>
-        <span>{open ? "▾" : "▸"} {total} routine</span>
-        <span className="chiprow" style={{ margin: 0 }}>{top.map(([k, v]) => <span key={k} className="pill">{k} {v}</span>)}</span>
+        <span className="rt-title">{open ? "▾" : "▸"} {total} routine set aside</span>
+        <span className="rt-legend">
+          {TIERS.map((t) => counts[t.key] > 0 && (
+            <span key={t.key} className={`rt-key ${t.key}`}><i />{counts[t.key]} {t.label}</span>
+          ))}
+        </span>
       </button>
       {open && (
         <ul>
-          {items.map((e) => (
-            <li key={e.filing_ids[0]}>
-              <span className="tk">{e.symbol}</span>
-              <span style={{ flex: 1 }}>{e.one_liner || e.headline}</span>
-              {e.url && <a className="link" href={e.url} target="_blank" rel="noreferrer">↗</a>}
-            </li>
-          ))}
+          {sorted.map((e) => {
+            const t = tierOf(e.materiality);
+            return (
+              <li key={e.filing_ids[0]} className={`rt-${t}`}>
+                <span className="tk">{e.symbol}</span>
+                <span className="rt-cat">{e.label}</span>
+                <span className="rt-h">{e.one_liner || tidy(e.headline)}</span>
+                {e.related > 0 && <span className="rt-rel">+{e.related}</span>}
+                {e.url && <a className="link" href={e.url} target="_blank" rel="noreferrer" aria-label="Open filing">↗</a>}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

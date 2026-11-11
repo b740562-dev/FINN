@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import type { Digest } from "@/lib/types";
 import { inr, pct, tone } from "@/lib/format";
@@ -114,7 +115,13 @@ export default function Today() {
 
       <div className="sec news-h"><span><i className="live" />Top news</span>{digest && <span>{digest.counts.matters} of {digest.counts.filings} filings</span>}</div>
 
-      {loading && !digest ? (
+      {me && me.holdings.length === 0 ? (
+        <div className="empty">
+          <b>No holdings yet.</b>
+          Add the stocks you own and FINN ranks every filing against your portfolio.
+          <div><Link className="btn primary" href="/you#portfolio">Add holdings</Link></div>
+        </div>
+      ) : loading && !digest ? (
         <>
           <div className="skel" />
           <div className="skel" />
