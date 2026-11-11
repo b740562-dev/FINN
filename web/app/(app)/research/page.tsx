@@ -35,13 +35,9 @@ function Index() {
       <header className="topbar">
         <div className="brand"><span className="logo">RESEARCH</span><span className="when">primary sources only</span></div>
         <form style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); if (q.trim()) router.push(`/research/${encodeURIComponent(q.trim().toUpperCase())}`); }}>
-          <input className="txt" placeholder="Any NSE ticker, e.g. TCS, HAL, DMART" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="txt" placeholder="Any NSE ticker · TCS, HAL, DMART" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
       </header>
-      <p className="sub" style={{ padding: "10px 16px 0", color: "var(--dim)", fontSize: 11.5 }}>
-        Works on any NSE company: numbers load instantly from its filings; add its annual report and concall transcripts to unlock
-        promise-vs-delivered and cited narrative.
-      </p>
       {!all && <><div className="skel sm" style={{ marginTop: 12 }} /><div className="skel sm" /></>}
       {groups.filter(([, xs]) => xs.length).map(([title, xs]) => (
         <section key={title}>
@@ -58,7 +54,7 @@ function Index() {
         </section>
       ))}
       {all && q.length >= 2 && list.length === 0 && (
-        <div className="empty"><b>Not tracked yet.</b>Open it anyway: FINN will fetch {q.toUpperCase()} on demand.
+        <div className="empty"><b>Not tracked yet</b>FINN can fetch it now.
           <div><Link className="btn" href={`/research/${encodeURIComponent(q.toUpperCase())}`}>RESEARCH {q.toUpperCase()} →</Link></div>
         </div>
       )}

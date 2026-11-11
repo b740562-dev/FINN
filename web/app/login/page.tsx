@@ -36,13 +36,12 @@ export default function Login() {
   return (
     <main className="login">
       <span className="logo">FINN<b className="amber">.</b></span>
-      <h1>Your portfolio, filtered.<br />Only what matters, and why.</h1>
-      <p>FINN watches every filing and end-of-day move across your holdings, ranks what&apos;s material, and buries the rest.</p>
-      <ul>
-        <li><span>01</span>A ranked daily digest: results as numbers, new executives with a bio, routine paperwork folded away.</li>
-        <li><span>02</span>Alerts on the moves you define as unusual.</li>
-        <li><span>03</span>Research on any NSE company, grounded in its own filings, with every claim cited.</li>
-      </ul>
+      <h1>Your portfolio,<br />filtered.</h1>
+      <div className="feat">
+        <div><b>◎</b><span>What matters</span></div>
+        <div><b>⚡</b><span>Your alerts</span></div>
+        <div><b>❝</b><span>Cited research</span></div>
+      </div>
 
       <div className="actions">
         <div className="or" style={{ marginTop: 0 }}>SIGN IN</div>
@@ -67,12 +66,12 @@ export default function Login() {
         <button className="btn primary block" disabled={!!busy} onClick={() => run("guest", signInGuest)}>
           {busy === "guest" ? "SETTING UP YOUR DEMO PORTFOLIO…" : "TRY AS GUEST →"}
         </button>
-        <div className="note" style={{ marginTop: 0 }}>Starts with an 18-stock demo portfolio. Nothing to fill in.</div>
+        <div className="note" style={{ marginTop: 0 }}>18-stock demo portfolio · no sign-up</div>
         {err && <div className="err" style={{ margin: 0 }}>{err}</div>}
         {devMode && (
-          <div className="flag" style={{ textAlign: "center" }}>Local demo mode: “Try as guest” uses a local demo account (no Supabase sign-in).</div>
+          <div className="flag" style={{ textAlign: "center" }}>Local demo mode</div>
         )}
-        <div className="note">End-of-day data · NSE/BSE filings via screener.in · Not investment advice.</div>
+        <div className="note">EOD data · NSE/BSE filings · not investment advice</div>
       </div>
     </main>
   );

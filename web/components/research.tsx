@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import type { Citation, Metric, Section } from "@/lib/types";
 import { crore, pct } from "@/lib/format";
-import { ResultsTable } from "./cards";
+import { KpiTiles, ResultsTable } from "./cards";
 import { Spark } from "./spark";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -16,10 +16,10 @@ export function CiteSheet({ c, onClose }: { c: Citation | null; onClose: () => v
     <div className="sheet-bg" onClick={onClose} role="dialog" aria-modal>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="grab" />
-        <div className="mono dim" style={{ fontSize: 10, letterSpacing: "0.1em" }}>SOURCE [{c.id}]</div>
-        <div style={{ fontWeight: 600, marginTop: 4 }}>{c.doc_label}{c.page ? ` · page ${c.page}` : ""}</div>
+        <div className="dim" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em" }}>SOURCE [{c.id}]</div>
+        <div style={{ fontWeight: 700, marginTop: 4 }}>{c.doc_label}{c.page ? ` · p.${c.page}` : ""}</div>
         <blockquote>{c.quote}</blockquote>
-        <button className="btn" onClick={onClose}>CLOSE</button>
+        <button className="btn" onClick={onClose}>Close</button>
       </div>
     </div>
   );
@@ -35,7 +35,7 @@ export function Cited({ text, cites, open }: { text: string; cites: Citation[]; 
         if (!m) return <Fragment key={i}>{p}</Fragment>;
         return [...new Set(m[1].split(/\s*,\s*/))].map((id) => {
           const c = cites.find((x) => x.id.toLowerCase() === id.toLowerCase());
-          return c ? <button key={`${i}-${id}`} className="cite" onClick={() => open(c)}>{id}</button> : null;
+          return c ? <button key={`${i}-${id}`} className="cite" onClick={(e) => { e.stopPropagation(); open(c); }}>{id}</button> : null;
         });
       })}
     </>
@@ -49,7 +49,7 @@ function CiteIds({ ids, cites, open }: { ids?: string[] | string | null; cites: 
     <>
       {list.map((id) => {
         const c = cites.find((x) => x.id === id);
-        return c ? <button key={id} className="cite" onClick={() => open(c)}>{id}</button> : null;
+        return c ? <button key={id} className="cite" onClick={(e) => { e.stopPropagation(); open(c); }}>{id}</button> : null;
       })}
     </>
   );
@@ -57,29 +57,30 @@ function CiteIds({ ids, cites, open }: { ids?: string[] | string | null; cites: 
 
 // ---------------------------------------------------------------- shells
 export function SectionShell({ title, s, children }: { title: string; s: Section<Any> | null | "loading"; children?: React.ReactNode }) {
-  const meta = s && s !== "loading" && s.model ? s.model.replace("gemini-", "") : s && s !== "loading" && s.status === "ready" ? "deterministic" : "";
+  const meta = s && s !== "loading" && s.model ? s.model.replace("gemini-", "") : s && s !== "loading" && s.status === "ready" ? "computed" : "";
   return (
     <section className="rsec">
-      <header><h2>{title}</h2><span>{s === "loading" || !s ? "loading…" : meta}</span></header>
+      <header><h2>{title}</h2><span>{s === "loading" || !s ? "…" : meta}</span></header>
       <div className="body">
-        {s === "loading" || !s ? (
-          <div className="skel sm" style={{ margin: 0 }} />
-        ) : s.status === "error" ? (
-          <div className="err" style={{ margin: 0 }}>Couldn&apos;t build this section{s.error ? `: ${s.error}` : ""}.</div>
-        ) : (
-          children
-        )}
+        {s === "loading" || !s ? <div className="skel sm" style={{ margin: 0 }} />
+          : s.status === "error" ? <div className="err" style={{ margin: 0 }}>Couldn&apos;t build this section.</div>
+          : children}
       </div>
     </section>
   );
 }
 
-function NeedsDocs({ what }: { what: string }) {
+function NeedsDocs() {
+  return <p className="needs">📄 Add this company&apos;s concall transcripts below to unlock.</p>;
+}
+
+/** Text that shows 2 lines until tapped. */
+function Clamp({ children, lines = 2 }: { children: React.ReactNode; lines?: number }) {
+  const [open, setOpen] = useState(false);
   return (
-    <p className="needs">
-      <b>Needs primary documents.</b> {what} Add this company&apos;s concall transcripts (and annual report) below. FINN only
-      analyses what the company itself published.
-    </p>
+    <div className={open ? "" : "clamp"} style={{ WebkitLineClamp: open ? undefined : lines }} onClick={() => setOpen(!open)}>
+      {children}
+    </div>
   );
 }
 
@@ -90,42 +91,33 @@ export function SnapshotView({ s, open }: { s: Section<Any>; open: (c: Citation)
   const r = f.ratios ?? {};
   const biz = s.content?.business;
   const lq = f.latest_quarter;
+  const tiles: [string, string][] = [
+    ["Mcap", f.market_cap_cr != null ? `₹${crore(f.market_cap_cr)} cr` : "–"],
+    ["TTM revenue", ttm.revenue != null ? `₹${crore(ttm.revenue)} cr` : "–"],
+    ["TTM PAT", ttm.pat != null ? `₹${crore(ttm.pat)} cr` : "–"],
+    ["EBITDA mgn", ttm.ebitda_margin != null ? `${Number(ttm.ebitda_margin).toFixed(1)}%` : "–"],
+    ["ROCE", r.roce != null ? `${r.roce}%` : "–"],
+    ["ROE", r.roe != null ? `${r.roe}%` : "–"],
+  ];
   return (
     <>
-      {biz ? (
-        <>
-          {biz.summary && (
-            <p><Cited text={biz.summary} cites={s.citations} open={open} /><CiteIds ids={biz.summary_citations} cites={s.citations} open={open} /></p>
-          )}
-          {Array.isArray(biz.segments) && biz.segments.length > 0 && (
-            <table className="t" style={{ marginTop: 6 }}>
-              <thead><tr><th>Segment</th><th>Share</th></tr></thead>
-              <tbody>
-                {biz.segments.map((g: Any, i: number) => (
-                  <tr key={i}>
-                    <td className="lbl">{g.name}{g.note ? <span className="dim"> · {g.note}</span> : null}<CiteIds ids={g.citation_id} cites={s.citations} open={open} /></td>
-                    <td>{g.share_pct != null ? `${g.share_pct}%` : "–"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </>
-      ) : (
-        <p className="needs">Business mix needs the annual report. Numbers below come straight from reported financials.</p>
+      <div className="kv">{tiles.map(([k, v]) => <div key={k}>{k}<b>{v}</b></div>)}</div>
+      {biz?.summary && (
+        <div className="bizsum">
+          <Clamp><Cited text={biz.summary} cites={s.citations} open={open} /><CiteIds ids={biz.summary_citations} cites={s.citations} open={open} /></Clamp>
+        </div>
       )}
-      <div className="kv">
-        <div>MCAP ₹CR<b>{crore(f.market_cap_cr)}</b></div>
-        <div>TTM REV<b>{crore(ttm.revenue)}</b></div>
-        <div>TTM PAT<b>{crore(ttm.pat)}</b></div>
-        <div>EBITDA MGN<b>{ttm.ebitda_margin != null ? `${Number(ttm.ebitda_margin).toFixed(1)}%` : "–"}</b></div>
-        <div>ROCE<b>{r.roce != null ? `${r.roce}%` : "–"}</b></div>
-        <div>ROE<b>{r.roe != null ? `${r.roe}%` : "–"}</b></div>
-      </div>
+      {Array.isArray(biz?.segments) && biz.segments.length > 0 && (
+        <div className="chiprow">
+          {biz.segments.map((g: Any, i: number) => (
+            <span key={i} className="pill" title={g.note}>{g.name}{g.share_pct != null ? ` · ${g.share_pct}%` : ""}</span>
+          ))}
+        </div>
+      )}
       {lq?.status !== "pending" && lq?.metrics && (
-        <div style={{ marginTop: 10 }}>
-          <div className="mono dim" style={{ fontSize: 10, letterSpacing: "0.1em" }}>LATEST QUARTER · {lq.headline}</div>
-          <ResultsTable card={{ status: "ready", ...lq }} />
+        <div style={{ marginTop: 12 }}>
+          <div className="mini-h">Latest quarter · {lq.quarter_label}</div>
+          <KpiTiles card={{ status: "ready", ...lq }} />
         </div>
       )}
     </>
@@ -133,122 +125,188 @@ export function SnapshotView({ s, open }: { s: Section<Any>; open: (c: Citation)
 }
 
 // ---------------------------------------------------------------- health
-function series(label: string, sub: string, years: string[], vals: (number | null)[], fmt: (v: number | null) => string, color?: string) {
+type Badge = [string, "good" | "warn" | "bad"];
+
+function healthBadges(c: Any): Badge[] {
+  const out: Badge[] = [];
+  const t = c?.trajectory ?? {}, b = c?.balance_sheet ?? {}, cash = c?.cash ?? {};
+  const g5 = t.cagr?.revenue_5y, p5 = t.cagr?.pat_5y;
+  if (g5 != null) out.push([`Revenue ${pct(g5, 0)}/yr`, g5 >= 12 ? "good" : g5 >= 6 ? "warn" : "bad"]);
+  if (p5 != null && g5 != null) out.push(p5 >= g5 ? ["Profit outgrowing sales", "good"] : ["Profit lagging sales", "warn"]);
+  const de = (b.debt_to_equity ?? []).filter((x: number | null) => x != null).slice(-1)[0];
+  if (de != null) out.push(de < 0.3 ? ["Low debt", "good"] : de < 1 ? [`D/E ${de.toFixed(1)}x`, "warn"] : [`High debt ${de.toFixed(1)}x`, "bad"]);
+  const wc = (b.working_capital_days ?? []).filter((x: number | null) => x != null);
+  if (wc.length >= 4) {
+    const d = wc[wc.length - 1] - wc[wc.length - 4];
+    if (Math.abs(d) >= 10) out.push(d > 0 ? ["Working capital stretching", "warn"] : ["Working capital tighter", "good"]);
+  }
+  if (cash.conversion_pct != null) {
+    const cv = cash.conversion_pct;
+    out.push(cv >= 90 ? ["Cash-backed profits", "good"] : cv >= 70 ? [`Cash ${Math.round(cv)}% of profit`, "warn"] : ["Weak cash conversion", "bad"]);
+  }
+  const fcf = (cash.fcf ?? []).slice(-5).filter((x: number | null) => x != null && x < 0).length;
+  if (fcf >= 2) out.push([`FCF negative ${fcf}/5 yrs`, "bad"]);
+  return out;
+}
+
+function spark(label: string, sub: string, vals: (number | null)[], fmt: (v: number | null) => string, color?: string) {
   const last = vals.length ? vals[vals.length - 1] : null;
   return (
     <div className="spark" key={label}>
-      <div className="l">{label}<small>{sub} · {years[0]}–{years[years.length - 1]}</small></div>
+      <div className="l">{label}<small>{sub}</small></div>
       <Spark values={vals} color={color} />
-      <div className="num" style={{ minWidth: 70, textAlign: "right" }}>{fmt(last)}</div>
+      <div className="num sv">{fmt(last)}</div>
     </div>
   );
 }
 
-function Verdict({ text }: { text?: string | null }) {
-  if (!text) return null;
-  const warn = /flag|weak|declin|compress|rising debt|stretch|below|lag|negative|worse/i.test(text);
-  return <div className={`verdict ${warn ? "warn" : ""}`}>{text}</div>;
-}
-
 export function HealthView({ s }: { s: Section<Any> }) {
-  const t = s.content?.trajectory ?? {};
-  const b = s.content?.balance_sheet ?? {};
-  const c = s.content?.cash ?? {};
-  const cagr = t.cagr ?? {};
-  const cr = (v: number | null) => crore(v);
+  const [why, setWhy] = useState(false);
+  const t = s.content?.trajectory ?? {}, b = s.content?.balance_sheet ?? {}, c = s.content?.cash ?? {};
+  const cr = (v: number | null) => (v == null ? "–" : `${crore(v)}`);
+  const badges = healthBadges(s.content);
   return (
     <>
-      <div className="mono dim" style={{ fontSize: 10, letterSpacing: "0.1em" }}>TRAJECTORY</div>
-      {t.years && series("Revenue", `3y CAGR ${pct(cagr.revenue_3y)} · 5y ${pct(cagr.revenue_5y)}`, t.years, t.revenue ?? [], cr)}
-      {t.years && series("PAT", `3y CAGR ${pct(cagr.pat_3y)} · 5y ${pct(cagr.pat_5y)}`, t.years, t.pat ?? [], cr)}
-      {t.years && t.opm && t.opm.some((x: number | null) => x != null) && series("Operating margin", "OPM %", t.years, t.opm, (v) => (v == null ? "–" : `${v}%`), "var(--blue)")}
-      <Verdict text={t.verdict} />
-
-      <div className="mono dim" style={{ fontSize: 10, letterSpacing: "0.1em", marginTop: 12 }}>BALANCE SHEET</div>
-      {b.years && series("Borrowings", "₹ cr", b.years, b.borrowings ?? [], cr, "var(--dn)")}
-      {b.years && b.debt_to_equity && series("Debt / equity", "x", b.years, b.debt_to_equity, (v) => (v == null ? "–" : `${Number(v).toFixed(2)}x`), "var(--dn)")}
-      {b.years && b.working_capital_days && b.working_capital_days.some((x: number | null) => x != null) &&
-        series("Working capital", "days", b.years, b.working_capital_days, (v) => (v == null ? "–" : `${Math.round(v)}d`), "var(--violet)")}
-      <Verdict text={b.verdict} />
-
-      <div className="mono dim" style={{ fontSize: 10, letterSpacing: "0.1em", marginTop: 12 }}>CASH QUALITY</div>
-      {c.years && series("Cash from operations", "₹ cr", c.years, c.cfo ?? [], cr, "var(--up)")}
-      {c.years && series("Free cash flow", "CFO − capex", c.years, c.fcf ?? [], cr, "var(--up)")}
-      {c.conversion_pct != null && (
-        <div className="kv"><div>CFO / PAT<b className={c.conversion_pct < 70 ? "amber" : "up"}>{Math.round(c.conversion_pct)}%</b></div></div>
-      )}
-      <Verdict text={c.verdict} />
+      <div className="badges">{badges.map(([txt, k]) => <span key={txt} className={`badge ${k}`}>{txt}</span>)}</div>
+      {t.years && spark("Revenue", "₹ cr · 10 yrs", t.revenue ?? [], cr)}
+      {t.years && spark("Profit", "₹ cr · 10 yrs", t.pat ?? [], cr, "#7fd8e8")}
+      {b.years && b.borrowings && spark("Debt", "₹ cr", b.borrowings, cr, "#ff7a6e")}
+      {c.years && spark("Free cash flow", "₹ cr", c.fcf ?? [], cr, "#5be38f")}
+      <button className="link" style={{ marginTop: 8 }} onClick={() => setWhy(!why)}>{why ? "Hide reasoning" : "Why these badges?"}</button>
+      {why && <div className="verdicts">{[t.verdict, b.verdict, c.verdict].filter(Boolean).map((v: string) => <p key={v}>{v}</p>)}</div>}
     </>
   );
 }
 
 // ---------------------------------------------------------------- promise vs delivered
+const VERDICTS = ["hit", "partial", "missed", "pending", "unverifiable"] as const;
+
+function firstNum(s: string | null | undefined): number | null {
+  const m = String(s ?? "").match(/-?\d+(?:\.\d+)?/);
+  return m ? Number(m[0]) : null;
+}
+function lastPct(s: string | null | undefined): number | null {
+  const all = String(s ?? "").match(/-?\d+(?:\.\d+)?(?=\s*%|\s*$|,)/g) ?? String(s ?? "").match(/-?\d+(?:\.\d+)?/g);
+  if (!all || !all.length) return null;
+  const v = Number(all[all.length - 1]);
+  return Math.abs(v) <= 100 ? v : null;
+}
+
+/** Target vs actual as a bullet bar (only for % targets with a % actual). */
+function TargetBar({ target, actual, tone }: { target: number; actual: number; tone: string }) {
+  const max = Math.max(target, actual, 1) * 1.25;
+  return (
+    <div className="tbar" title={`Target ${target}% · actual ${actual}%`}>
+      <div className={`fill ${tone}`} style={{ width: `${Math.max(0, (actual / max) * 100)}%` }} />
+      <div className="mark" style={{ left: `${(target / max) * 100}%` }} />
+      <span className="tv">{actual}%</span>
+    </div>
+  );
+}
+
+const METRIC_HINTS: [RegExp, string][] = [
+  [/order inflow|order book/i, "Order inflow"], [/r\s*&\s*d|research and development/i, "R&D spend"],
+  [/capex|capital (investment|expenditure)/i, "Capex"], [/export/i, "Exports"], [/stores?\b/i, "Stores"],
+  [/volume/i, "Volume growth"], [/margin/i, "Margin"], [/revenue|sales|top ?line/i, "Revenue growth"],
+  [/profit|pat\b/i, "Profit"],
+];
+
+function shortMetric(it: Any): string {
+  const m = String(it.metric || "").replace(/_/g, " ").trim();
+  if (m && !/^(other|target|n\/?a)$/i.test(m)) return m[0].toUpperCase() + m.slice(1);
+  const text = `${it.promise ?? ""} ${it.target ?? ""}`;
+  return METRIC_HINTS.find(([rx]) => rx.test(text))?.[1] ?? "Target";
+}
+
+function PromiseRow({ it, s, open }: { it: Any; s: Section<Any>; open: (c: Citation) => void }) {
+  const [more, setMore] = useState(false);
+  const target = firstNum(it.target);
+  const actual = lastPct(it.actual);
+  const isPct = /%|percent/i.test(String(it.target)) && actual !== null && target !== null;
+  const tr = it.verdict === "pending" ? it.tracking : null;
+  const tone = it.verdict === "hit" || tr === "ahead" || tr === "on_track" ? "good" : it.verdict === "missed" || tr === "behind" ? "bad" : "neutral";
+  const status = tr === "ahead" ? "Ahead" : tr === "on_track" ? "On track" : tr === "behind" ? "Behind" : it.verdict;
+  return (
+    <div className="prow" onClick={() => setMore(!more)}>
+      <div className="top">
+        <div className="pm">
+          <b>{shortMetric(it)}{it.times > 1 && <span className="said">said {it.times}×</span>}</b>
+          <span>{String(it.target).replace(/more than /i, ">").replace(/\s*-?\s*plus percent/i, "%+").replace(/ percent/i, "%")} · {String(it.target_period || "").replace(/\s+/g, " ")}</span>
+        </div>
+        <span className={`vpill ${tone}`}>{status}</span>
+      </div>
+      {isPct && <TargetBar target={target!} actual={actual!} tone={tone} />}
+      {more && (
+        <div className="more">
+          <q>{it.promise}</q>
+          <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>
+            {it.said_in}<CiteIds ids={it.citation_id ?? it.citation_ids} cites={s.citations} open={open} />
+            {it.actual && it.actual !== "n/a" ? ` · Actual: ${it.actual}` : ""}
+          </div>
+          {it.explanation && <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>{it.explanation}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PromiseView({ s, open }: { s: Section<Any>; open: (c: Citation) => void }) {
-  if (s.status === "needs_docs") return <NeedsDocs what="Promise vs delivered compares what management guided on its calls with what it then reported." />;
-  const sc = s.content?.score ?? {};
+  if (s.status === "needs_docs") return <NeedsDocs />;
   const items: Any[] = s.content?.items ?? [];
-  const track = (t: string) => items.filter((i) => i.verdict === "pending" && i.tracking === t).length;
-  const TRACK: Record<string, [string, string]> = { ahead: ["v-hit", "tracking ahead"], on_track: ["v-hit", "on track"], behind: ["v-missed", "tracking behind"] };
+  if (!items.length) return <p className="needs">No quantified guidance in these calls.</p>;
+  const n = (k: string) => items.filter((i) => i.verdict === k).length;
+  const ahead = items.filter((i) => i.verdict === "pending" && (i.tracking === "ahead" || i.tracking === "on_track")).length;
+  const behind = items.filter((i) => i.verdict === "pending" && i.tracking === "behind").length;
+  // most informative first: judged, then tracking, then the rest
+  const rank = (i: Any) => (["hit", "missed", "partial"].includes(i.verdict) ? 0 : i.tracking && i.tracking !== "n/a" ? 1 : 2);
+  // Guidance restated on several calls (same metric, period and number) becomes one row: "said 3×".
+  const groups = new Map<string, Any>();
+  for (const it of items) {
+    const key = `${String(it.metric).toLowerCase()}|${String(it.target_period).toLowerCase()}|${firstNum(it.target)}`;
+    const g = groups.get(key);
+    if (g) g.times += 1;
+    else groups.set(key, { ...it, times: 1 });
+  }
+  const sorted = [...groups.values()].sort((a, b) => rank(a) - rank(b) || b.times - a.times);
   return (
     <>
-      <div className="score">
-        {["hit", "partial", "missed", "pending", "unverifiable"].filter((k) => sc[k]).map((k) => (
-          <span key={k} className={`v-${k}`}>{sc[k]} {k}</span>
-        ))}
+      <div className="scorebar">
+        {VERDICTS.filter((k) => n(k)).map((k) => <div key={k} className={`seg v-${k}`} style={{ flex: n(k) }} title={`${n(k)} ${k}`} />)}
       </div>
-      {(track("ahead") + track("on_track") + track("behind")) > 0 && (
-        <p className="sub" style={{ margin: "-4px 0 10px", fontSize: 11.5 }}>
-          Of the pending targets, year to date: <b className="up">{track("ahead") + track("on_track")} on or ahead of plan</b>
-          {track("behind") ? <>, <b className="dn">{track("behind")} behind</b></> : null}.
-        </p>
-      )}
-      {items.length === 0 && <p className="needs">No explicit, quantified guidance found in the transcripts provided.</p>}
-      {items.map((it, i) => (
-        <div className="promise" key={i}>
-          <div className="top">
-            <q>{it.promise}</q>
-            <span style={{ display: "grid", gap: 4, justifyItems: "end" }}>
-              <span className={`pv v-${it.verdict}`}>{it.verdict}</span>
-              {it.verdict === "pending" && TRACK[it.tracking] && (
-                <span className={`pv ${TRACK[it.tracking][0]}`} style={{ fontSize: 9 }}>{TRACK[it.tracking][1]}</span>
-              )}
-            </span>
-          </div>
-          <dl className="vs">
-            <dt>SAID</dt><dd>{it.said_in}<CiteIds ids={it.citation_id ?? it.citation_ids} cites={s.citations} open={open} /></dd>
-            {it.target && (<><dt>TARGET</dt><dd>{it.target}</dd></>)}
-            <dt>ACTUAL</dt><dd>{it.actual ?? "–"}</dd>
-            {it.explanation && (<><dt>WHY</dt><dd className="muted">{it.explanation}</dd></>)}
-          </dl>
+      <div className="legend">
+        {VERDICTS.filter((k) => n(k)).map((k) => <span key={k}><i className={`dot v-${k}`} />{n(k)} {k}</span>)}
+      </div>
+      {(ahead > 0 || behind > 0) && (
+        <div className="badges" style={{ marginTop: 8 }}>
+          {ahead > 0 && <span className="badge good">▲ {ahead} on/ahead of plan</span>}
+          {behind > 0 && <span className="badge bad">▼ {behind} behind plan</span>}
         </div>
-      ))}
-      {s.content?.verification && (
-        <p className="sub dim" style={{ marginTop: 8, fontSize: 10.5 }}>
-          Quote check: {JSON.stringify(s.content.verification).replace(/[{}"]/g, "").replace(/,/g, " · ").replace(/:/g, " ")}
-        </p>
       )}
+      <div className="plist">{sorted.slice(0, 8).map((it, i) => <PromiseRow key={i} it={it} s={s} open={open} />)}</div>
+      {sorted.length > 8 && <p className="dim" style={{ fontSize: 11, marginTop: 6 }}>+{sorted.length - 8} more pending/unverifiable</p>}
     </>
   );
 }
 
 // ---------------------------------------------------------------- bull / bear
 export function BullBearView({ s, open }: { s: Section<Any>; open: (c: Citation) => void }) {
-  const point = (p: Any, i: number) => (
-    <li key={i}>
-      <Cited text={typeof p === "string" ? p : p.point} cites={s.citations} open={open} />
-      {typeof p !== "string" && <CiteIds ids={p.citation_ids ?? p.citations} cites={s.citations} open={open} />}
+  const point = (p: Any, i: number, up: boolean) => (
+    <li key={i} className={up ? "bull" : "bear"}>
+      <span className="ic">{up ? "▲" : "▼"}</span>
+      <Clamp>
+        <Cited text={typeof p === "string" ? p : p.point} cites={s.citations} open={open} />
+        {typeof p !== "string" && <CiteIds ids={p.citation_ids ?? p.citations} cites={s.citations} open={open} />}
+      </Clamp>
     </li>
   );
   return (
-    <div className="bb">
-      <div><h3 className="up">BULL</h3><ol>{(s.content?.bull ?? []).map(point)}</ol></div>
-      <div><h3 className="dn">BEAR</h3><ol>{(s.content?.bear ?? []).map(point)}</ol></div>
-      {s.content?.basis && <p className="sub dim" style={{ fontSize: 10.5 }}>{String(s.content.basis)}</p>}
-    </div>
+    <ul className="bb2">
+      {(s.content?.bull ?? []).map((p: Any, i: number) => point(p, i, true))}
+      {(s.content?.bear ?? []).map((p: Any, i: number) => point(p, i, false))}
+    </ul>
   );
 }
 
-// ---------------------------------------------------------------- latest metrics (fallback)
 export function MetricRow({ m }: { m: Metric }) {
   return <span>{m.name} {crore(m.value)} ({pct(m.yoy_pct)} YoY)</span>;
 }
@@ -257,3 +315,5 @@ export function useCiteSheet() {
   const [c, setC] = useState<Citation | null>(null);
   return { open: setC, sheet: <CiteSheet c={c} onClose={() => setC(null)} /> };
 }
+
+export { ResultsTable };

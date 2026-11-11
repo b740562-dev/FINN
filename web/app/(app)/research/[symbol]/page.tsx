@@ -196,8 +196,7 @@ function Dossier() {
           ))}
           {isGuest ? (
             <p className="needs" style={{ marginTop: 8 }}>
-              Documents are shared across all FINN users, so adding them needs a saved account. Guests can read every
-              pre-loaded document. <Link className="amber" href="/you">Save your account →</Link>
+              🔒 Uploads need a saved account. <Link className="amber" href="/you">Save your account →</Link>
             </p>
           ) : (
           <form onSubmit={onUpload} style={{ display: "grid", gap: 8, marginTop: 8 }}>
@@ -211,15 +210,15 @@ function Dossier() {
             </div>
             <button className="btn" disabled={upload.busy}>{upload.busy ? "INGESTING…" : "ADD DOCUMENT"}</button>
             {upload.msg && <div className="ok">{upload.msg}</div>}
-            <p className="sub dim" style={{ fontSize: 10.5, margin: 0 }}>Download from screener.in → Documents. Date = call date (transcript) or fiscal year end (annual report).</p>
+            
           </form>
           )}
         </div>
       </section>
 
-      <div className="sec"><span>── Ask about {symbol}</span><span>answers cite its own documents</span></div>
+      <div className="sec"><span>── Ask about {symbol}</span><span>cited answers</span></div>
       <div className="chat">
-        {chat.length === 0 && <p className="sub dim" style={{ fontSize: 11.5, padding: "0 4px 8px" }}>Use the ask bar below: “What did management say about margins?”</p>}
+        
         {chat.map((m, i) => (
           <div className="qa" key={i}>
             <div className="q">› {m.q}</div>

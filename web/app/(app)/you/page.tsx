@@ -90,7 +90,7 @@ export default function You() {
       <div className="sec"><span>── What counts as unusual</span></div>
       <section className="panel">
         <h3>Price &amp; volume alerts</h3>
-        <p className="sub">Checked on end-of-day data for every holding. Saving rebuilds your inbox under the new rules.</p>
+        
         {rules ? (
           <>
             <div className="field">
@@ -109,7 +109,7 @@ export default function You() {
               </p>
             )}
             <h3 style={{ marginTop: 14 }}>Filing types that alert you</h3>
-            <p className="sub">Material filings in these categories land in your inbox.</p>
+            
             <div className="chips">
               {(rules.all_categories ?? Object.keys(CAT_LABEL)).filter((c) => c !== "unclassified").map((c) => {
                 const on = rules.categories.includes(c);
@@ -151,7 +151,7 @@ export default function You() {
               ))}
             </div>
           )}
-          <p className="sub" style={{ marginTop: 6, marginBottom: 0 }}>To track a company FINN doesn&apos;t cover yet, research it first; it&apos;s added automatically.</p>
+          
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
           <button className="btn primary" onClick={saveHoldings}>SAVE HOLDINGS</button>
@@ -168,7 +168,7 @@ export default function You() {
         {isGuest ? (
           <>
             <h3>You&apos;re using a guest account</h3>
-            <p className="sub">Keep your portfolio and rules: add an email and confirm the link we send.</p>
+            <p className="sub">Add an email to keep this portfolio.</p>
             <form style={{ display: "flex", gap: 8 }} onSubmit={async (e) => {
               e.preventDefault();
               try { await saveAccountEmail(email); setAcctMsg(`Check ${email} to confirm.`); } catch (er) { setAcctMsg((er as Error).message); }
@@ -186,10 +186,10 @@ export default function You() {
 
       <div className="sec"><span>── Sources</span></div>
       <section className="panel">
-        <p className="sub" style={{ margin: 0 }}>
-          Prices: end-of-day via Yahoo Finance. Filings and financials: NSE/BSE disclosures via screener.in. Research uses only the
-          company&apos;s own reports and call transcripts. Executive bios use public web profiles (linked). Not investment advice.
-        </p>
+        <div className="chiprow" style={{ margin: 0 }}>
+          <span className="pill">EOD prices · Yahoo</span><span className="pill">Filings · NSE/BSE via screener</span>
+          <span className="pill">Research · company documents only</span><span className="pill">Not investment advice</span>
+        </div>
       </section>
     </>
   );
