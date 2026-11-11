@@ -8,6 +8,7 @@ import { inr } from "@/lib/format";
 import { useAuth } from "@/components/auth";
 import { initialsOf, profileCompleteness, useData } from "@/components/data";
 import { Ring } from "@/components/ring";
+import { MyDocuments } from "@/components/my-docs";
 import { UsagePanel } from "@/components/usage";
 import { ProfileButton } from "@/components/profile-menu";
 
@@ -207,6 +208,7 @@ export default function You() {
         {SOURCES.map(([ic, k, v]) => (
           <div className="yrow" key={k}><span className="yi">{ic}</span><span className="yk">{k}</span><span className="yv">{v}</span></div>
         ))}
+        <MyDocuments guest={isGuest} />
         <p className="yfoot">Not investment advice.</p>
       </section>
     </>

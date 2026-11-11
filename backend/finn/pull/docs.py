@@ -40,11 +40,16 @@ _AR_KEYWORDS = re.compile(
     r"performance highlights|order book|market share|capacity", re.I)
 
 
+DOC_KINDS = ("annual_report", "transcript", "presentation")
+
+
 def doc_label(kind: str, period: date) -> str:
     if kind == "transcript":
         return f"{quarter_label(_col(latest_quarter_before(period)))} concall"
     if kind == "annual_report":
         return f"Annual Report FY{str(period.year)[-2:]}"
+    if kind == "presentation":
+        return f"Investor presentation {period:%b %Y}"
     return f"{kind.replace('_', ' ').title()} {period:%b %Y}"
 
 
@@ -139,10 +144,11 @@ def _vec_literal(v: list[float]) -> str:
 
 
 def ingest_pdf(symbol: str, data: bytes, kind: str, period: date, filename: str = "",
-               uploaded_by: str | None = None, progress=None) -> dict:
+               uploaded_by: str | None = None, progress=None, source: str | None = None,
+               source_url: str | None = None) -> dict:
     """progress(stage, info) is called as work advances: 'reading', 'indexing'."""
-    if kind not in ("annual_report", "transcript"):
-        raise ValueError("kind must be annual_report or transcript")
+    if kind not in DOC_KINDS:
+        raise ValueError("kind must be one of " + ", ".join(DOC_KINDS))
     sha = hashlib.sha256(data).hexdigest()
     with cursor(commit=False) as c:
         c.execute("select id, chunks from public.documents where sha256 = %s", (sha,))
@@ -167,10 +173,10 @@ def ingest_pdf(symbol: str, data: bytes, kind: str, period: date, filename: str 
 
     with cursor() as c:
         c.execute("""insert into public.documents (symbol, kind, period, label, filename, sha256, pages, pages_kept,
-                                                  chunks, uploaded_by)
-                     values (%s, %s, %s::date, %s, %s, %s, %s::int, %s::int, %s::int, %s::uuid) returning id""",
+                                                  chunks, uploaded_by, source, source_url)
+                     values (%s, %s, %s::date, %s, %s, %s, %s::int, %s::int, %s::int, %s::uuid, %s, %s) returning id""",
                   (symbol, kind, period.isoformat(), label, filename, sha, len(pages), len(keep), len(chunks),
-                   uploaded_by))
+                   uploaded_by, source, source_url))
         doc_id = c.fetchone()[0]
         c.execute(
             """insert into public.doc_chunks (document_id, symbol, page, chunk_index, content, embedding)

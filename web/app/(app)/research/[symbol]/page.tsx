@@ -199,7 +199,7 @@ function Dossier() {
           ))}
           {isGuest ? (
             <p className="needs" style={{ marginTop: 8 }}>
-              🔒 Uploads need a saved account. <Link className="amber" href="/you">Save your account →</Link>
+              🔒 Uploads need a saved account. <Link className="amber" href="/profile">Save your account →</Link>
             </p>
           ) : (
           <form onSubmit={onUpload} style={{ display: "grid", gap: 8, marginTop: 8 }}>
@@ -208,10 +208,18 @@ function Dossier() {
               <select className="txt" name="kind" defaultValue="transcript" style={{ flex: 1 }}>
                 <option value="transcript">Concall transcript</option>
                 <option value="annual_report">Annual report</option>
+                <option value="presentation">Investor presentation</option>
               </select>
               <input className="txt" type="date" name="period" required style={{ flex: 1, colorScheme: "dark" }} aria-label="Call date or fiscal year end" />
             </div>
-            <button className="btn" disabled={upload.busy}>{upload.busy ? "INGESTING…" : "ADD DOCUMENT"}</button>
+            <select className="txt" name="source" defaultValue="company_website" aria-label="Where the document came from">
+              <option value="company_website">Source: company website</option>
+              <option value="bse">Source: BSE</option>
+              <option value="nse">Source: NSE</option>
+              <option value="investor_relations">Source: investor relations</option>
+              <option value="other">Source: other</option>
+            </select>
+            <button className="btn" disabled={upload.busy}>{upload.busy ? "Reading…" : "Add document"}</button>
             {upload.msg && <div className="ok">{upload.msg}</div>}
             
           </form>
