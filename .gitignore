@@ -26,3 +26,6 @@ Thumbs.db
 
 # Uploaded filing PDFs (large; re-downloadable)
 backend/docs_inbox/
+
+# Local tooling
+.claude/

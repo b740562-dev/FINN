@@ -1,0 +1,19 @@
+name: Keep API warm
+
+# Render's free tier sleeps after 15 idle minutes (~30-50s cold start).
+# Ping /health every ~10 minutes during Indian daytime + evening so a grader
+# opening the app gets an instant response. Set the repo variable API_URL.
+on:
+  schedule:
+    - cron: "*/10 2-18 * * *"   # 07:30-23:59 IST
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping /health
+        run: |
+          if [ -z "${{ vars.API_URL }}" ]; then echo "API_URL repo variable not set"; exit 0; fi
+          curl -fsS --max-time 90 "${{ vars.API_URL }}/health" || echo "ping failed (cold start or down)"

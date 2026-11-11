@@ -1,0 +1,31 @@
+# Render Blueprint for FINN's API (free tier). Secrets are entered in the
+# Render dashboard (sync: false), never committed.
+services:
+  - type: web
+    name: finn-api
+    runtime: python
+    plan: free
+    region: singapore          # closest Render region to the Mumbai Supabase pooler
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn finn.api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.10"
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false            # e.g. https://finn-xyz.vercel.app
+      - key: FRONTEND_ORIGIN_REGEX
+        value: https://.*\.vercel\.app
