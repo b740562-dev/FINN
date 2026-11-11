@@ -7,6 +7,7 @@ import { api, post } from "@/lib/api";
 import type { Citation, Overview, Section } from "@/lib/types";
 import { crore } from "@/lib/format";
 import { useData } from "@/components/data";
+import { useAuth } from "@/components/auth";
 import { BullBearView, Cited, HealthView, PromiseView, SectionShell, SnapshotView, useCiteSheet } from "@/components/research";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -21,6 +22,8 @@ function Dossier() {
   const symbol = decodeURIComponent(raw || "").toUpperCase();
   const params = useSearchParams();
   const { me } = useData();
+  const { session } = useAuth();
+  const isGuest = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous);
   const [ov, setOv] = useState<Overview | null>(null);
   const [ovErr, setOvErr] = useState<string | null>(null);
   const [secs, setSecs] = useState<Record<SectionKey, Section<Any> | "loading" | null>>({
@@ -92,21 +95,41 @@ function Dossier() {
 
   async function onUpload(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const file = fd.get("file") as File | null;
     if (!file || !file.size) return;
-    setUpload({ busy: true, msg: `Reading ${file.name}…` });
+    setUpload({ busy: true, msg: `Uploading ${file.name}…` });
     try {
-      const r = await api<{ status: string; label?: string; pages?: number; pages_kept?: number; chunks?: number }>(
+      const r = await api<{ status: string; job_id?: number; label?: string }>(
         `/research/${symbol}/documents`, { method: "POST", body: fd });
       if (r.status === "duplicate") {
-        setUpload({ busy: false, msg: "Already on file. Nothing new to read." });
+        setUpload({ busy: false, msg: `Already on file${r.label ? ` (${r.label})` : ""}. Nothing new to read.` });
         return;
       }
-      setUpload({ busy: false, msg: `Added ${r.label ?? "document"}: ${r.pages_kept ?? r.pages} pages read, ${r.chunks} passages indexed. Rebuilding the dossier…` });
-      (e.target as HTMLFormElement).reset();
-      await loadOverview();
-      loadSections();
+      form.reset();
+      // Processing runs on the server; poll the job and narrate its stages.
+      for (;;) {
+        await new Promise((res) => setTimeout(res, 2000));
+        const j = await api<{ status: string; result?: Any; error?: string; seconds: number }>(
+          `/research/${symbol}/jobs/${r.job_id}`);
+        const res = j.result ?? {};
+        if (j.status === "failed") return setUpload({ busy: false, msg: `Couldn't add it: ${j.error}` });
+        if (j.status === "duplicate") return setUpload({ busy: false, msg: "Already on file. Nothing new to read." });
+        if (j.status === "done") {
+          setUpload({ busy: false, msg: `Added ${res.label ?? "document"}: ${res.pages_kept ?? res.pages} pages read, ${res.chunks} passages indexed (${Math.round(j.seconds)}s).` });
+          await loadOverview();
+          loadSections();
+          return;
+        }
+        const stage: Record<string, string> = {
+          queued: "Queued…",
+          reading: "Reading the PDF…",
+          indexing: `Indexing ${res.chunks ?? ""} passages from ${res.pages_kept ?? "?"} pages…`,
+          analysing: "Checking guidance against reported numbers…",
+        };
+        setUpload({ busy: true, msg: `${stage[j.status] ?? j.status} (${Math.round(j.seconds)}s)` });
+      }
     } catch (er) {
       setUpload({ busy: false, msg: (er as Error).message });
     }
@@ -171,6 +194,12 @@ function Dossier() {
               <div className="l">{d.label}<small>{d.kind.replace("_", " ")}{d.pages ? ` · ${d.pages_kept && d.pages_kept < d.pages ? `${d.pages_kept} of ${d.pages}` : d.pages} pages read` : ""}</small></div>
             </div>
           ))}
+          {isGuest ? (
+            <p className="needs" style={{ marginTop: 8 }}>
+              Documents are shared across all FINN users, so adding them needs a saved account. Guests can read every
+              pre-loaded document. <Link className="amber" href="/you">Save your account →</Link>
+            </p>
+          ) : (
           <form onSubmit={onUpload} style={{ display: "grid", gap: 8, marginTop: 8 }}>
             <input className="txt" type="file" name="file" accept="application/pdf" required />
             <div style={{ display: "flex", gap: 8 }}>
@@ -184,6 +213,7 @@ function Dossier() {
             {upload.msg && <div className="ok">{upload.msg}</div>}
             <p className="sub dim" style={{ fontSize: 10.5, margin: 0 }}>Download from screener.in → Documents. Date = call date (transcript) or fiscal year end (annual report).</p>
           </form>
+          )}
         </div>
       </section>
 

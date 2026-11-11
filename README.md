@@ -44,14 +44,25 @@ Next.js PWA (Vercel) ──Bearer JWT──▶ FastAPI (Render) ──▶ Supaba
 4. **One-liner number guard.** Every number in a generated one-liner must exist in the filing (unit conversions allowed within 0.5%). It caught a real 10× crore/million error.
 5. **Grounded bios.** Incoming executives: one cached web search + one cheap summarisation restricted to the snippets. Every organisation and school must appear in the sources or it's dropped. Social media and aggregator links are filtered out.
 6. **Pull side = primary sources only.** Screener's reported financials + the company's own annual reports and transcripts. No news, no broker notes, no model memory. Quotes are verified against the cited chunk before they're shown.
-7. **Cost.** Two model tiers (`gemini-3.5-flash-lite` for bulk, `gemini-3.5-flash` only for reasoning, with automatic fallback when a model is overloaded; `gemini-3.8-flash` is opt-in via `FINN_REASON_MODEL` because it was timing out on our key), a Postgres response cache (identical work is never paid twice) and per-call logging surfaced in-app. A pipeline run with nothing new costs zero LLM calls. Free tier throughout.
+7. **Cost.**
+   - Two model tiers: `gemini-3.5-flash-lite` for bulk, `gemini-3.6-flash` only for reasoning, with automatic fallback when a model is overloaded. `gemini-3.8-flash` is opt-in via `FINN_REASON_MODEL`, because it was timing out on our key.
+   - A Postgres response cache means identical work is never paid twice.
+   - Per-call logging is priced at Google's published rates and shown in-app.
+   - **Everything built so far** (110 filings classified, 3 executive bios, research dossiers for 23 companies) **would cost $0.20 at paid rates**. It's ₹0 billed, on the free tier.
+   - A pipeline run with nothing new costs zero LLM calls.
 8. **Honest limits over fake completeness.** "Quiet day" instead of padding the feed, "pending" when a quarter isn't posted yet, "needs documents" instead of guessing management's guidance.
 
 ## Data sources & what we learned
 
 - **Prices:** yfinance (`.NS`), end of day.
-- **Filings, financials, document links:** screener.in. BSE's and NSE's own APIs and PDF hosts refuse non-browser clients, and we don't imitate browsers to get around that. So the announcement feed accumulates from screener's per-company list (latest 5, polled every 2h). Annual reports and transcripts are **uploaded** (in-app, or dropped into `backend/docs_inbox/<SYMBOL>/` as `AR-2026.pdf`, `CC-2026-11.pdf`).
+- **Filings, financials, document links:** screener.in. BSE's and NSE's own APIs and PDF hosts refuse non-browser clients, and we don't imitate browsers to get around that. So the announcement feed accumulates from screener's per-company list (latest 5, polled every 2h).
+- **Annual reports and transcripts are uploaded**, either in-app or dropped into `backend/docs_inbox/<SYMBOL>/` as `AR-2026.pdf` / `CC-2026-11.pdf`.
+  - Documents are shared by every user, so **only saved (non-guest) accounts can upload**. One bad upload shouldn't change everyone's research.
+  - Uploads run as **background jobs** (read → index → analyse) that the app polls, so a 300-page annual report never hits a request timeout.
+  - The job finishes by rebuilding Promise vs Delivered, so it's ready when the user looks.
+- **Research is pre-built.** After each refresh, `finn.pull.prewarm` rebuilds any company whose reported numbers or documents changed. Everything else stays cached, so no one waits on a cold dossier.
 - **Exec bios:** Tavily search (push-side enrichment only; never used for research).
+- **Network blocks:** some Indian ISPs block `*.supabase.co` (and render.com). The browser never calls Supabase directly. `/sb/*` on the app's own domain is rewritten server-side to the project (`web/next.config.ts`), so sign-in works on those networks too.
 
 ## Run locally
 
@@ -64,6 +75,7 @@ cp .env.example .env              # fill GEMINI / SUPABASE / TAVILY keys
 .venv/Scripts/python scripts/migrate.py
 .venv/Scripts/python -m finn.jobs.pipeline          # load data, classify, enrich, alert
 .venv/Scripts/python -m finn.pull.docs              # ingest PDFs from docs_inbox/ (optional)
+.venv/Scripts/python -m finn.pull.prewarm           # pre-build research pages (pipeline also does this)
 .venv/Scripts/python -m uvicorn finn.api.main:app --host 127.0.0.1 --port 8000
 
 # frontend
@@ -73,7 +85,7 @@ npm install
 npm run dev
 ```
 
-Checks: `scripts/check_services.py` (Gemini + DB), `scripts/check_auth_seed.py` (guest sign-up → seeding → RLS), `scripts/check_api.py` (every endpoint, throwaway guest), `scripts/check_research.py` (research sections), `scripts/digest_preview.py 7` (print a digest).
+Checks: `scripts/check_services.py` (Gemini + DB), `scripts/check_auth_seed.py` (guest sign-up → seeding → RLS), `scripts/check_api.py` (every endpoint, throwaway guest), `scripts/check_research.py` (research sections), `scripts/check_uploads.py` (guest block, background ingest job, duplicates; in-process, no Supabase call), `scripts/digest_preview.py 7` (print a digest).
 
 ## Deploy
 

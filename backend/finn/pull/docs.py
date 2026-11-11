@@ -125,7 +125,8 @@ def _vec_literal(v: list[float]) -> str:
 
 
 def ingest_pdf(symbol: str, data: bytes, kind: str, period: date, filename: str = "",
-               uploaded_by: str | None = None) -> dict:
+               uploaded_by: str | None = None, progress=None) -> dict:
+    """progress(stage, info) is called as work advances: 'reading', 'indexing'."""
     if kind not in ("annual_report", "transcript"):
         raise ValueError("kind must be annual_report or transcript")
     sha = hashlib.sha256(data).hexdigest()
@@ -136,6 +137,8 @@ def ingest_pdf(symbol: str, data: bytes, kind: str, period: date, filename: str 
         return {"status": "duplicate", "document_id": hit[0], "chunks": hit[1]}
 
     t0 = time.time()
+    if progress:
+        progress("reading", {})
     pages = extract_pages(data)
     keep = select_ar_pages(pages) if kind == "annual_report" else [i for i in range(len(pages)) if pages[i]]
     if not keep:
@@ -143,6 +146,8 @@ def ingest_pdf(symbol: str, data: bytes, kind: str, period: date, filename: str 
     chunks: list[tuple[int, str]] = []
     for i in keep:
         chunks.extend(chunk_page(pages[i], i + 1))
+    if progress:
+        progress("indexing", {"pages": len(pages), "pages_kept": len(keep), "chunks": len(chunks)})
     vectors = _embed_all([c for _, c in chunks])
     label = doc_label(kind, period)
 

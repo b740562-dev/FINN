@@ -22,19 +22,26 @@ from finn.db import cursor
 BULK = "gemini-3.5-flash-lite"     # classification, extraction, one-liners, verification
 # promise-vs-delivered, bull/bear, chat synthesis. gemini-3.8-flash is the
 # stronger model but on 11 Nov 2026 it returned 504s / multi-minute latencies
-# on our free-tier key, so the default is 3.5-flash; override with
+# on our free-tier key. gemini-3.5-flash is deprecated and Google routes it to
+# gemini-3.6-flash, so we name 3.6-flash directly. Override with
 # FINN_REASON_MODEL=gemini-3.8-flash when it is healthy.
-REASON = os.getenv("FINN_REASON_MODEL", "gemini-3.5-flash")
+REASON = os.getenv("FINN_REASON_MODEL", "gemini-3.6-flash")
 EMBED = "gemini-embedding-2"
 EMBED_DIM = 768
 
-# USD per 1M tokens (input, output). Free tier costs ₹0; these let the cost
-# meter show what the same work would cost at paid rates. Filled in from the
-# published price list; None = unknown -> cost shown as tokens only.
+# Paid-tier list prices, USD per 1M tokens (input, output incl. thinking),
+# from https://ai.google.dev/gemini-api/docs/pricing as read on 11 Nov 2026.
+# 3.6/3.8-flash prices double on 1 Jan 2027. FINN runs on the free tier
+# (billed ₹0); the meter shows what the same work would cost at paid rates.
 PRICES_PER_M: dict[str, tuple[float, float] | None] = {
-    BULK: None,
-    REASON: None,
+    "gemini-3.5-flash-lite": (0.30, 2.50),
+    "gemini-3.1-flash-lite": (0.25, 1.50),
+    "gemini-3.6-flash": (0.75, 3.75),
+    "gemini-3.5-flash": (0.75, 3.75),   # deprecated alias, served by 3.6-flash
+    "gemini-3.8-flash": (0.75, 3.75),
+    "gemini-embedding-2": (0.20, 0.0),
 }
+PRICES_AS_OF = "2026-11-11"
 
 # When the primary model is overloaded (503) or too slow, fall back once to a
 # sibling model rather than leaving the user waiting minutes.
@@ -138,4 +145,11 @@ def embed(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> list[list[
         contents=texts,
         config=types.EmbedContentConfig(task_type=task_type, output_dimensionality=EMBED_DIM),
     )
+    # The embed API doesn't return token counts; estimate ~4 chars per token so
+    # embeddings show up in the cost meter instead of being invisible.
+    try:
+        est = sum(len(t) for t in texts) // 4
+        _log("embed_documents" if task_type == "RETRIEVAL_DOCUMENT" else "embed_query", EMBED, est, 0, False)
+    except Exception:
+        pass
     return [e.values for e in resp.embeddings]

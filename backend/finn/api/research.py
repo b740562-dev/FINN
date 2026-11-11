@@ -7,9 +7,11 @@ Mount in finn/api/main.py:
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from finn.api.auth import User, current_user
@@ -77,9 +79,49 @@ def section(symbol: str, section: str, refresh: bool = False, user: User = Depen
     return S.get_section(sym, section, force=refresh)
 
 
-@router.post("/{symbol}/documents")
-async def upload(symbol: str, file: UploadFile = File(...), kind: str = Form(...), period: str = Form(...),
-                 user: User = Depends(current_user)):
+STALE_JOB_MIN = 20   # a job not updated for this long was interrupted (e.g. server restart)
+
+
+def _job_update(job_id: int, status: str, result: dict | None = None, error: str | None = None) -> None:
+    with cursor() as c:
+        c.execute("""update public.ingest_jobs set status = %s,
+                       result = coalesce(%s::jsonb, result), error = %s, updated_at = now()
+                     where id = %s""",
+                  (status, json.dumps(result) if result is not None else None, error, job_id))
+
+
+def _run_ingest(job_id: int, sym: str, data: bytes, kind: str, period: date, filename: str, user_id: str) -> None:
+    """Background worker: read -> index -> rebuild the document-based sections."""
+    try:
+        res = ingest_pdf(sym, data, kind, period, filename, uploaded_by=user_id,
+                         progress=lambda stage, info: _job_update(job_id, stage, info or None))
+        if res["status"] == "duplicate":
+            _job_update(job_id, "duplicate", res)
+            return
+        S.invalidate(sym)
+        _job_update(job_id, "analysing", res)
+        # Rebuild what the new document unlocks, so it's ready when the user looks.
+        for sec in ("snapshot", "promise_delivered", "bull_bear"):
+            try:
+                S.get_section(sym, sec)
+            except Exception:
+                pass  # the section is rebuilt on demand if this fails
+        _job_update(job_id, "done", res)
+    except ValueError as e:
+        _job_update(job_id, "failed", error=str(e))
+    except Exception as e:  # never leave a job spinning
+        _job_update(job_id, "failed", error=f"{type(e).__name__}: {str(e)[:200]}")
+
+
+@router.post("/{symbol}/documents", status_code=202)
+async def upload(symbol: str, background: BackgroundTasks, file: UploadFile = File(...), kind: str = Form(...),
+                 period: str = Form(...), user: User = Depends(current_user)):
+    """Accepts a PDF and processes it in the background. Documents are shared by
+    every user, so guests can't add them (one bad upload would change everyone's
+    research); the demo set is pre-loaded."""
+    if user.is_anonymous:
+        raise HTTPException(403, "Guests can read every pre-loaded document. To add documents, save your account "
+                                 "with an email (You → Account).")
     sym = _sym(symbol)
     _require(sym)
     if kind not in ("annual_report", "transcript"):
@@ -93,13 +135,38 @@ async def upload(symbol: str, file: UploadFile = File(...), kind: str = Form(...
         raise HTTPException(413, "PDF larger than 40 MB")
     if not data.startswith(b"%PDF"):
         raise HTTPException(422, "Not a PDF")
-    try:
-        res = ingest_pdf(sym, data, kind, p, file.filename or "", uploaded_by=user.id)
-    except ValueError as e:
-        raise HTTPException(422, str(e))
-    if res["status"] == "ingested":
-        S.invalidate(sym)
-    return res
+
+    sha = hashlib.sha256(data).hexdigest()
+    with cursor() as c:
+        c.execute("select id, label from public.documents where sha256 = %s", (sha,))
+        dup = c.fetchone()
+        if dup:  # instant answer, no job needed
+            return {"status": "duplicate", "document_id": dup[0], "label": dup[1]}
+        c.execute("""insert into public.ingest_jobs (symbol, filename, kind, period, created_by)
+                     values (%s, %s, %s, %s::date, %s::uuid) returning id""",
+                  (sym, file.filename or "", kind, p.isoformat(), user.id))
+        job_id = c.fetchone()[0]
+    background.add_task(_run_ingest, job_id, sym, data, kind, p, file.filename or "", user.id)
+    return {"status": "queued", "job_id": job_id}
+
+
+@router.get("/{symbol}/jobs/{job_id}")
+def job(symbol: str, job_id: int, user: User = Depends(current_user)):
+    with cursor(commit=False) as c:
+        c.execute("""select id, status, result, error, filename, kind, period, created_at, updated_at,
+                            (updated_at < now() - make_interval(mins => %s::int)) as stale
+                     from public.ingest_jobs where id = %s and symbol = %s""",
+                  (STALE_JOB_MIN, job_id, _sym(symbol)))
+        r = c.fetchone()
+    if not r:
+        raise HTTPException(404, "No such job")
+    jid, status, result, error, fname, kind, period, created, updated, stale = r
+    if stale and status not in ("done", "duplicate", "failed"):
+        status, error = "failed", "Interrupted (the server restarted). Please upload again."
+    if isinstance(result, str):
+        result = json.loads(result)
+    return {"id": jid, "status": status, "result": result, "error": error, "filename": fname, "kind": kind,
+            "period": str(period), "seconds": round((updated - created).total_seconds(), 1)}
 
 
 class AskReq(BaseModel):

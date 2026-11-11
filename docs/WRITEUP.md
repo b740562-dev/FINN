@@ -23,7 +23,8 @@ FINN is a mobile-first PWA for an investor holding an 18-stock NSE portfolio. It
 1. **Rules before models, models before reasoning models.**
    - 58% of filings are classified from their standardised BSE subject line with no LLM.
    - The rest go in batches of 15 to `gemini-3.5-flash-lite`.
-   - Only promise-vs-delivered, bull/bear and Q&A use the stronger `gemini-3.5-flash`. I planned on 3.8-flash, but it was timing out on my key, so it's a one-variable switch with automatic fallback when a model is overloaded.
+   - Only promise-vs-delivered, bull/bear and Q&A use the stronger `gemini-3.6-flash`. I planned on 3.8-flash, but it was timing out on my key, so it's a one-variable switch with automatic fallback when a model is overloaded.
+   - Every call is priced at Google's published rates in-app. **Everything built so far (110 filings classified, 3 executive bios, research dossiers for 23 companies) would cost $0.20 at paid rates.** The actual bill is ₹0 on the free tier.
    - Every response is cached in Postgres and logged; the app shows the routing and cache-hit rate.
    - A scheduler run with nothing new costs zero calls. The whole thing runs on free tiers.
 2. **The model extracts; code judges.**
@@ -41,7 +42,8 @@ FINN is a mobile-first PWA for an investor holding an 18-stock NSE portfolio. It
    - Screener.in became the filing index and the source of reported financials.
    - Annual reports and transcripts are uploaded, in-app or via a drop folder.
    - The trade-off: unseen tickers get numbers-based research instantly, and document-based sections once their PDFs are added.
-6. **Guest-first auth.** "Try as guest" gets a seeded, fully working account in about 2 seconds with nothing to fill in. Row-level security isolates each user, and a guest can upgrade to email later.
+6. **Built for the networks graders actually use.** Some Indian ISPs block `*.supabase.co` and render.com. The browser reaches Supabase only through the app's own domain (a server-side rewrite), so sign-in works on those networks. Research pages are pre-built after each refresh, so nobody waits on a cold model call. Uploads run as background jobs, and only saved accounts can change the shared document library.
+7. **Guest-first auth.** "Try as guest" gets a seeded, fully working account in about 2 seconds with nothing to fill in. Row-level security isolates each user, and a guest can upgrade to email later.
 
 ## What I left out, deliberately
 

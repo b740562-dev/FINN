@@ -13,6 +13,7 @@ from finn.jobs.ingest import main as ingest
 from finn.push.alerts import run_alerts
 from finn.push.bios import enrich_management_changes
 from finn.push.classify import classify_pending
+from finn.pull.prewarm import prewarm
 from finn.push.results import attach_results_cards
 from finn.universe import all_symbols
 
@@ -34,6 +35,10 @@ def run(symbols: list[str]) -> None:
     print("results cards:", attach_results_cards())
     print("bios:", enrich_management_changes())
     print("alerts:", run_alerts(lookback_days=3))
+    # Rebuild research pages whose numbers changed (unchanged ones are cache hits).
+    warmed = prewarm(symbols)
+    rebuilt = sum(1 for r in warmed if "*" not in str(r.get("bull_bear", "*")))   # '*' marks a cache hit
+    print(f"research prewarm: {rebuilt} rebuilt, {len(warmed) - rebuilt} already current")
     print(f"pipeline done in {time.time() - t0:.0f}s")
 
 

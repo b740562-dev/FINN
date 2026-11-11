@@ -28,25 +28,33 @@ export function UsagePanel() {
   const cached = n(totals.cache_hits ?? totals.cached);
   const tin = n(totals.tokens_in);
   const tout = n(totals.tokens_out);
-  const hitRate = calls ? Math.round((cached / calls) * 100) : 0;
+  // `calls` = model calls actually made; `cached` = requests answered from cache.
+  const hitRate = calls + cached ? Math.round((cached / (calls + cached)) * 100) : 0;
+
+  const cost = data.cost_usd === null || data.cost_usd === undefined ? null : n(data.cost_usd);
+  const usd = (v: number) => (v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(2)}`);
 
   return (
     <>
       <div className="stat">
-        <div><b>{calls.toLocaleString("en-IN")}</b><span>LLM calls · {n(data.days) || 7}d</span></div>
-        <div><b>{Math.round(hitRate)}%</b><span>cache hits</span></div>
-        <div><b>{((tin + tout) / 1000).toFixed(1)}K</b><span>tokens</span></div>
+        <div><b>{calls.toLocaleString("en-IN")}</b><span>model calls · {n(data.days) || 7}d</span></div>
+        <div><b>{Math.round(hitRate)}%</b><span>served from cache</span></div>
+        <div><b>{cost === null ? "–" : usd(cost)}</b><span>at paid rates</span></div>
       </div>
+      <p className="sub" style={{ marginTop: 8, marginBottom: 0 }}>
+        Billed: <b className="up">₹0</b>, since FINN runs on Gemini&apos;s free tier. The figure above is what the same
+        {" "}{((tin + tout) / 1000).toFixed(1)}K tokens would cost on the paid tier (Google list prices, Nov 2026).
+      </p>
       {rows.length > 0 && (
         <table className="t" style={{ marginTop: 10 }}>
-          <thead><tr><th>Task</th><th>Model</th><th>Calls</th><th>Tokens</th></tr></thead>
+          <thead><tr><th>Task</th><th>Model</th><th>Calls</th><th>Cost</th></tr></thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={i}>
-                <td className="lbl">{String(r.task ?? "")}</td>
+                <td className="lbl">{String(r.task ?? "").replace(/_/g, " ")}</td>
                 <td className="dim">{String(r.model ?? "").replace("gemini-", "")}</td>
-                <td>{n(r.calls ?? r.count)}</td>
-                <td>{((n(r.tokens_in) + n(r.tokens_out)) / 1000).toFixed(1)}K</td>
+                <td>{n(r.calls ?? r.count)}{n(r.cache_hits) ? <span className="dim"> +{n(r.cache_hits)}c</span> : null}</td>
+                <td>{r.cost_usd === null || r.cost_usd === undefined ? "–" : usd(n(r.cost_usd))}</td>
               </tr>
             ))}
           </tbody>
