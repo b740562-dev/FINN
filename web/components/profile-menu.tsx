@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { post } from "@/lib/api";
 import { inr } from "@/lib/format";
 import { useAuth } from "./auth";
-import { initialsOf, useData } from "./data";
+import { initialsOf, profileCompleteness, useData } from "./data";
+import { Ring } from "./ring";
 
 /** Top-right avatar on every screen: who you are, a glance at the account,
  *  shortcuts to settings, and the account actions (save, reset, sign out). */
@@ -81,7 +82,7 @@ export function ProfileButton() {
             </div>
 
             <button className="pm-edit" onClick={() => go("/profile")}>
-              <span>✎</span>Edit profile<em>Name · gender · email · work · education</em>
+              <span>✎</span>Edit profile<Ring pct={profileCompleteness(profile, email)} size={30} stroke={3} />
             </button>
 
             <div className="pm-stats">

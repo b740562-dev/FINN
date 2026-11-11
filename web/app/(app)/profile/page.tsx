@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { put } from "@/lib/api";
 import type { Profile } from "@/lib/types";
 import { useAuth } from "@/components/auth";
-import { initialsOf, useData } from "@/components/data";
+import { initialsOf, profileCompleteness, useData } from "@/components/data";
+import { Ring } from "@/components/ring";
 import { ProfileButton } from "@/components/profile-menu";
 
 const GENDERS: [Profile["gender"], string][] = [["female", "Female"], ["male", "Male"], ["non_binary", "Non-binary"], ["prefer_not_to_say", "Prefer not to say"]];
@@ -75,10 +76,11 @@ export default function EditProfile() {
       <form onSubmit={save} className="pf">
         <div className="pf-hero">
           <div className="pf-av">{initials}</div>
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div className="pf-name">{f.full_name || (guest ? "Guest investor" : email || "Your name")}</div>
             <div className="pf-sub">{[f.work_role, f.work_company].filter(Boolean).join(" · ") || "Add your work below"}</div>
           </div>
+          <Ring pct={profileCompleteness(f, email)} size={50} stroke={4.5} />
         </div>
 
         <section className="panel">

@@ -71,6 +71,14 @@ export function useData(): DataCtx {
   return c;
 }
 
+const COMPLETENESS_FIELDS = ["full_name", "gender", "city", "work_company", "work_role", "education", "experience", "bio"] as const;
+
+/** Share of the profile that's filled in (8 profile fields + email), 0-100. */
+export function profileCompleteness(p: Partial<Profile> | null, email: string | null | undefined): number {
+  const filled = COMPLETENESS_FIELDS.filter((k) => String(p?.[k] ?? "").trim() !== "").length + (email ? 1 : 0);
+  return Math.round((filled / (COMPLETENESS_FIELDS.length + 1)) * 100);
+}
+
 /** Initials for an avatar: "Asha Rao" -> "AR", email -> "A", guest -> "G". */
 export function initialsOf(profile: Profile | null, email: string | null | undefined, guest: boolean): string {
   const name = profile?.full_name?.trim();

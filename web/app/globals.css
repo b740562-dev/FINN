@@ -554,3 +554,10 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .pf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .pf textarea.txt { resize: vertical; min-height: 70px; }
 .pf-actions { padding: 4px 12px 0; display: grid; gap: 8px; }
+
+/* completeness ring */
+.ring { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.ring svg { position: absolute; inset: 0; filter: drop-shadow(0 0 6px rgba(198,244,94,0.35)); }
+.ring b { position: relative; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.pm-edit { grid-template-columns: 22px 1fr auto; }
+.pm-edit > span { grid-row: auto; }
