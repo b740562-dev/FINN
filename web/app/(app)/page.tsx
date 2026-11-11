@@ -7,6 +7,7 @@ import { inr, pct, tone } from "@/lib/format";
 import { useData } from "@/components/data";
 import { EventCard, RoutineList } from "@/components/cards";
 import { BriefButton, briefScript } from "@/components/brief";
+import { PortfolioChart } from "@/components/portfolio-chart";
 
 const WINDOWS = [
   { key: "24h", label: "24H", spoken: "last 24 hours" },
@@ -95,6 +96,7 @@ export default function Today() {
           </div>
           <BriefButton script={script} />
         </div>
+        <PortfolioChart />
         <div className="counts">
           <span><b>{digest?.counts.matters ?? "–"}</b> matter</span>
           <span><b>{digest?.counts.routine_filings ?? "–"}</b> routine set aside</span>

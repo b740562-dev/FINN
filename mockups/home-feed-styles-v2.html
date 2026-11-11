@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FINN Style Options v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;800&family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@500;700&family=Newsreader:opsz,wght@6..72,400;6..72,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #cfd2d8; font-family: system-ui, sans-serif; padding: 24px 16px 48px; color: #1b1d22; }
+  h1 { text-align: center; font-size: 20px; }
+  .sub { text-align: center; color: #555; font-size: 13px; margin: 4px 0 22px; }
+  .row { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; }
+  .opt { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 360px; }
+  .opt h2 { font-size: 15px; } .opt p { font-size: 12px; color: #444; text-align: center; min-height: 48px; }
+  .phone { width: 360px; height: 770px; border-radius: 38px; overflow: hidden; position: relative;
+           box-shadow: 0 18px 44px rgba(0,0,0,.25), 0 0 0 9px #111; display: flex; flex-direction: column;
+           background: var(--bg); color: var(--ink); font-family: var(--sans); }
+  .scroll { flex: 1; overflow: hidden; padding-bottom: 120px; }
+  .num { font-family: var(--numf); font-variant-numeric: tabular-nums; }
+  .status { display: flex; justify-content: space-between; padding: 12px 22px 4px; font-size: 12px; font-weight: 600; }
+  header { padding: 6px 16px 10px; }
+  .brand { display: flex; justify-content: space-between; align-items: baseline; }
+  .logo { font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: var(--logo-ls); }
+  .logo b { color: var(--accent); }
+  .when { font-size: 10px; color: var(--muted); font-family: var(--numf); letter-spacing: .06em; text-transform: uppercase; }
+  .seg { display: flex; gap: 6px; margin-top: 10px; }
+  .seg span { font-size: 11px; padding: 5px 11px; border: var(--bw) solid var(--line); border-radius: var(--chip-r);
+              color: var(--muted); font-family: var(--numf); }
+  .seg span.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .pulse { margin: 6px 12px 10px; padding: 14px; background: var(--card); border: var(--bw) solid var(--line);
+           border-radius: var(--r); display: flex; justify-content: space-between; align-items: center; }
+  .pulse .v { font-family: var(--display); font-size: 26px; font-weight: 700; }
+  .pulse .d { font-family: var(--numf); font-size: 12px; color: var(--up); margin-top: 2px; }
+  .pulse .c { font-size: 10.5px; color: var(--muted); margin-top: 6px; }
+  .play { font-size: 10.5px; padding: 6px 10px; border-radius: var(--chip-r); background: var(--accent-soft);
+          color: var(--accent-ink); font-family: var(--numf); font-weight: 600; white-space: nowrap; }
+  .sec { padding: 8px 16px 6px; font-size: 10px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase;
+         font-family: var(--numf); }
+  .card { margin: 0 12px 10px; padding: 12px; background: var(--card); border: var(--bw) solid var(--line);
+          border-radius: var(--r); position: relative; }
+  .card.k-results { box-shadow: var(--k-results); } .card.k-mgmt { box-shadow: var(--k-mgmt); }
+  .card.k-alert { box-shadow: var(--k-alert); }
+  .ch { display: flex; justify-content: space-between; align-items: center; }
+  .tk { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .02em; }
+  .tag { font-size: 9px; padding: 2px 7px; border-radius: var(--chip-r); margin-left: 6px; letter-spacing: .08em;
+         text-transform: uppercase; background: var(--accent-soft); color: var(--accent-ink); font-family: var(--numf);
+         vertical-align: 2px; }
+  .k-mgmt .tag { background: var(--blue-soft); color: var(--blue); }
+  .k-alert .tag { background: var(--up-soft); color: var(--up); }
+  .src { font-size: 10px; color: var(--muted); font-family: var(--numf); }
+  .head { font-family: var(--headf); font-size: var(--head-size); margin-top: 6px; line-height: 1.3; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11.5px; }
+  th { font-weight: 400; color: var(--muted); font-size: 9.5px; text-align: right; padding: 2px 0; font-family: var(--numf); }
+  th:first-child, td:first-child { text-align: left; }
+  td { text-align: right; padding: 4px 0; border-top: 1px solid var(--line); font-family: var(--numf); }
+  td:first-child { font-family: var(--sans); }
+  .up { color: var(--up); } .dn { color: var(--dn); }
+  .flag { margin-top: 8px; font-size: 11px; padding: 6px 8px; border-radius: var(--chip-r); background: var(--dn-soft); color: var(--dn); }
+  .why { display: inline-block; margin-top: 8px; font-size: 10px; color: var(--muted); border: 1px solid var(--line);
+         border-radius: 20px; padding: 2px 8px; }
+  .person { display: flex; gap: 10px; margin-top: 8px; }
+  .av { width: 32px; height: 32px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center;
+        background: var(--blue-soft); color: var(--blue); font-weight: 700; font-size: 11px; }
+  .pn { font-weight: 600; font-size: 13px; } .pb { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+  .metrics { display: flex; gap: 18px; margin-top: 8px; }
+  .metrics div { font-size: 9.5px; color: var(--muted); font-family: var(--numf); letter-spacing: .06em; }
+  .metrics b { display: block; font-size: 17px; font-family: var(--display); letter-spacing: 0; }
+  .ask { position: absolute; left: 12px; right: 12px; bottom: 62px; background: var(--ask-bg); border: var(--bw) solid var(--ask-line);
+         border-radius: var(--ask-r); padding: 11px 14px; font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between;
+         box-shadow: var(--ask-shadow); }
+  .ask b { color: var(--accent); }
+  nav { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; display: flex; justify-content: space-around; align-items: center;
+        border-top: var(--bw) solid var(--line); background: var(--bg); font-size: 10px; letter-spacing: .08em; color: var(--muted);
+        font-family: var(--numf); }
+  nav .on { color: var(--accent); font-weight: 700; }
+
+  /* ── A · SWISS REPORT: white, strict grid, one blue signal, huge numerals ── */
+  .t-a { --bg:#ffffff; --card:#ffffff; --ink:#0d0d0d; --muted:#6b6b6b; --line:#e3e3e3; --accent:#0033cc; --accent-soft:#e8edff;
+         --accent-ink:#0033cc; --on-accent:#fff; --up:#0a7a3d; --dn:#d1241b; --up-soft:#e6f4ec; --dn-soft:#fdeceb;
+         --blue:#0033cc; --blue-soft:#e8edff; --sans:'Inter Tight',sans-serif; --display:'Inter Tight',sans-serif;
+         --headf:'Inter Tight',sans-serif; --numf:'IBM Plex Mono',monospace; --r:0px; --chip-r:0px; --bw:1px; --logo-ls:-.02em;
+         --head-size:14.5px; --k-results: inset 4px 0 0 #0033cc; --k-mgmt: inset 4px 0 0 #0d0d0d; --k-alert: inset 4px 0 0 #0a7a3d;
+         --ask-bg:#0d0d0d; --ask-line:#0d0d0d; --ask-r:0px; --ask-shadow:none; }
+  .t-a .pulse .v { font-size: 34px; font-weight: 800; letter-spacing: -.03em; }
+  .t-a .card { border-left: 0; border-right: 0; margin: 0 0 0; border-top: 0; padding: 14px 16px; }
+  .t-a .ask { color: #bbb; } .t-a .ask b { color: #fff; }
+  .t-a .head { font-weight: 600; }
+
+  /* ── B · INK & SAFFRON: deep indigo, marigold accent, serif display, Indian warmth ── */
+  .t-b { --bg:#13112e; --card:#1c1a3f; --ink:#f3ecdc; --muted:#a59fc4; --line:#2c2955; --accent:#f4a024; --accent-soft:#3a2b18;
+         --accent-ink:#f8b448; --on-accent:#13112e; --up:#7fd6a8; --dn:#ff8a7a; --up-soft:#16352c; --dn-soft:#3d1d22;
+         --blue:#b9a8ff; --blue-soft:#2b2560; --sans:'Inter Tight',sans-serif; --display:'Fraunces',serif; --headf:'Fraunces',serif;
+         --numf:'IBM Plex Mono',monospace; --r:16px; --chip-r:999px; --bw:1px; --logo-ls:.01em; --head-size:15.5px;
+         --k-results:none; --k-mgmt:none; --k-alert:none; --ask-bg:#1c1a3f; --ask-line:#3a3670; --ask-r:999px;
+         --ask-shadow:0 8px 24px rgba(0,0,0,.45); }
+  .t-b .logo { font-weight: 700; font-size: 26px; }
+  .t-b .pulse { background: linear-gradient(135deg,#2a1f4f 0%,#1c1a3f 60%); border-color: #3a3670; }
+  .t-b .card.k-results::before { content:""; position:absolute; left:12px; right:12px; top:0; height:2px; background:#f4a024; border-radius:2px; }
+
+  /* ── C · NEO-BRUTALIST: off-white, black 2px borders, hard shadows, acid lime ── */
+  .t-c { --bg:#f4f1ea; --card:#ffffff; --ink:#0b0b0b; --muted:#5d5a52; --line:#0b0b0b; --accent:#c6f432; --accent-soft:#c6f432;
+         --accent-ink:#0b0b0b; --on-accent:#0b0b0b; --up:#0b7a35; --dn:#e0201b; --up-soft:#d9f7c4; --dn-soft:#ffd8d4;
+         --blue:#0b0b0b; --blue-soft:#ffd23f; --sans:'Space Grotesk',sans-serif; --display:'Space Grotesk',sans-serif;
+         --headf:'Space Grotesk',sans-serif; --numf:'JetBrains Mono',monospace; --r:6px; --chip-r:4px; --bw:2px;
+         --logo-ls:-.02em; --head-size:14.5px; --k-results: 4px 4px 0 #0b0b0b; --k-mgmt: 4px 4px 0 #0b0b0b;
+         --k-alert: 4px 4px 0 #0b0b0b; --ask-bg:#ffffff; --ask-line:#0b0b0b; --ask-r:6px; --ask-shadow: 4px 4px 0 #0b0b0b; }
+  .t-c .logo { font-size: 26px; } .t-c .logo b { color: #0b0b0b; background: #c6f432; padding: 0 3px; }
+  .t-c .pulse { box-shadow: 4px 4px 0 #0b0b0b; background: #c6f432; }
+  .t-c .pulse .d { color: #0b0b0b; } .t-c .pulse .c { color: #0b0b0b; } .t-c .play { background:#0b0b0b; color:#c6f432; }
+  .t-c .why { border: 2px solid #0b0b0b; color: #0b0b0b; font-weight: 600; }
+  .t-c .ask b { color: #0b0b0b; background: #c6f432; padding: 0 4px; } .t-c nav .on { color:#0b0b0b; background:#c6f432; padding:3px 6px; }
+  .t-c td { border-top: 1px solid #e2ded3; } .t-c .card { margin-bottom: 14px; }
+
+  /* ── D · PRIVATE BANK: espresso + cream, copper accent, serif numerals, quiet luxury ── */
+  .t-d { --bg:#171210; --card:#211a17; --ink:#efe6d8; --muted:#a8998a; --line:#3a2f29; --accent:#c8794a; --accent-soft:#3a251a;
+         --accent-ink:#e09a6c; --on-accent:#171210; --up:#9cc89a; --dn:#e5866f; --up-soft:#1f2c1f; --dn-soft:#3a1e19;
+         --blue:#d9c4a3; --blue-soft:#33291f; --sans:'Inter Tight',sans-serif; --display:'Newsreader',serif;
+         --headf:'Newsreader',serif; --numf:'DM Mono',monospace; --r:4px; --chip-r:2px; --bw:1px; --logo-ls:.18em;
+         --head-size:16px; --k-results:none; --k-mgmt:none; --k-alert:none; --ask-bg:#211a17; --ask-line:#4a3b32;
+         --ask-r:4px; --ask-shadow:none; }
+  .t-d .logo { font-weight: 600; font-size: 20px; } .t-d .pulse .v { font-weight: 400; font-size: 30px; }
+  .t-d .card { border-top: 1px solid #c8794a55; } .t-d .tk { font-weight: 600; letter-spacing: .08em; }
+  .t-d .metrics b { font-weight: 400; }
+</style>
+</head>
+<body>
+<h1>FINN: four new directions</h1>
+<p class="sub">Same screen, same real data (Today · 7 days). Pick one, or tell me which parts to mix.</p>
+<div class="row" id="row"></div>
+
+<template id="phone">
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● 5G ▮</span></div>
+    <div class="scroll">
+      <header>
+        <div class="brand"><span class="logo">FINN<b>.</b></span><span class="when">Wed 11 Nov · EOD</span></div>
+        <div class="seg"><span>24H</span><span class="on">7D</span><span>30D</span></div>
+      </header>
+      <div class="pulse">
+        <div><div class="v num">₹49.65L</div><div class="d">▲ +1.48% · +₹72.6K</div>
+          <div class="c">8 matter · 27 routine set aside · 18 holdings</div></div>
+        <span class="play">▶ 60s brief</span>
+      </div>
+      <div class="sec">What matters</div>
+      <div class="card k-results">
+        <div class="ch"><span><span class="tk">TATASTEEL</span><span class="tag">Results</span></span><span class="src">7 Nov</span></div>
+        <div class="head">Revenue +12% YoY; PAT +16% YoY; EBITDA margin 16.1% (+94bp)</div>
+        <table>
+          <tr><th>Q2 FY27 · ₹ cr</th><th>Actual</th><th>QoQ</th><th>YoY</th></tr>
+          <tr><td>Revenue</td><td>65,436</td><td class="up">+7.6%</td><td class="up">+11.5%</td></tr>
+          <tr><td>EBITDA</td><td>10,533</td><td class="up">+13.7%</td><td class="up">+18.4%</td></tr>
+          <tr><td>PAT</td><td>3,700</td><td class="up">+55.1%</td><td class="up">+16.2%</td></tr>
+        </table>
+        <div class="flag">⚑ Auditor qualified the accounts</div>
+        <span class="why">Results · 5% of book</span>
+      </div>
+      <div class="card k-mgmt">
+        <div class="ch"><span><span class="tk">HDFCBANK</span><span class="tag">Management</span></span><span class="src">27 Oct</span></div>
+        <div class="head">Anup Bagchi becomes MD &amp; CEO</div>
+        <div class="person"><div class="av">AB</div>
+          <div><div class="pn">Anup Bagchi</div><div class="pb">Ex-MD &amp; CEO, ICICI Securities · 30+ yrs at ICICI Group · IIT Kanpur, IIM Bangalore</div></div></div>
+      </div>
+      <div class="card k-alert">
+        <div class="ch"><span><span class="tk">RELIANCE</span><span class="tag">Price jump</span></span><span class="src">EOD · 2 Nov</span></div>
+        <div class="metrics"><div>MOVE<b class="up">+11.6%</b></div><div>VOLUME<b>5.8×</b></div><div>YOUR P&amp;L<b class="up">+₹50.3K</b></div></div>
+      </div>
+    </div>
+    <div class="ask"><span>Ask FINN: “Did Titan hit FY27 guidance?”</span><b>◉</b></div>
+    <nav><span class="on">TODAY</span><span>ALERTS</span><span>RESEARCH</span><span>YOU</span></nav>
+  </div>
+</template>
+
+<script>
+  const OPTS = [
+    ["t-a", "A · Swiss Report", "White, strict grid, hairline rules, one blue signal colour, huge numerals. Reads like a well-set annual report, not a trading app."],
+    ["t-b", "B · Ink & Saffron", "Deep indigo with marigold accents and serif headlines. Warm, distinctly Indian, still dark-mode friendly."],
+    ["t-c", "C · Neo-Brutalist", "Off-white, thick black borders, hard shadows, acid-lime highlights. Loud, confident, very un-banky."],
+    ["t-d", "D · Private Bank", "Espresso and cream with copper accents and serif numerals. Quiet luxury, like a wealth manager's note."],
+  ];
+  const row = document.getElementById("row"), tpl = document.getElementById("phone");
+  for (const [cls, title, desc] of OPTS) {
+    const wrap = document.createElement("div"); wrap.className = "opt";
+    wrap.innerHTML = `<h2>${title}</h2><p>${desc}</p>`;
+    const ph = tpl.content.firstElementChild.cloneNode(true); ph.classList.add(cls);
+    wrap.appendChild(ph); row.appendChild(wrap);
+  }
+</script>
+</body>
+</html>

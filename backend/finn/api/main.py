@@ -119,6 +119,31 @@ def me(user: User = Depends(current_user)):
             **_portfolio(user.id), "rules": _rules(user.id)}
 
 
+@app.get("/me/history")
+def history(days: int = Query(90, ge=7, le=400), user: User = Depends(current_user)):
+    """Portfolio value per trading day (current holdings x that day's close).
+    Days where any holding lacks a price are skipped so the line never dips
+    because of missing data rather than a real move."""
+    with cursor(commit=False) as c:
+        c.execute(
+            """with h as (select symbol, quantity from public.holdings
+                          where user_id = %s and quantity is not null and quantity > 0)
+               select p.date, sum(h.quantity * p.close)
+               from public.prices_eod p join h using (symbol)
+               where p.date >= current_date - %s::int
+               group by p.date
+               having count(*) = (select count(*) from h)
+               order by p.date""",
+            (user.id, days),
+        )
+        rows = c.fetchall()
+    pts = [{"date": str(d), "value": round(float(v))} for d, v in rows]
+    first, last = (pts[0]["value"], pts[-1]["value"]) if pts else (None, None)
+    return {"days": days, "points": pts,
+            "change": (last - first) if pts else None,
+            "change_pct": round((last / first - 1) * 100, 2) if pts and first else None}
+
+
 @app.post("/bootstrap")
 def bootstrap(user: User = Depends(current_user)):
     """Called by the app after sign-in: backfills the last 30 days of alerts so

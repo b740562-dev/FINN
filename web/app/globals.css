@@ -1,28 +1,30 @@
-/* FINN · Terminal design system (dark, dense). Mobile-first, max 480px column. */
+/* FINN · "Forest Glow" design system: deep green, glass cards, one lime accent.
+   Mobile-first, max 480px column. (`--amber` is the accent token name, now lime.) */
 :root {
-  --bg: #0a0c0f;
-  --bg-1: #0f1216;
-  --card: #11151a;
-  --card-2: #151a20;
-  --line: #1d2128;
-  --line-2: #262b33;
-  --ink: #e6e8eb;
-  --ink-2: #cfd3d9;
-  --muted: #9aa1ad;
-  --dim: #6b7280;
-  --amber: #f0b43c;
-  --amber-bg: #2a2210;
-  --up: #3ddc84;
-  --up-bg: #0f2a1b;
-  --dn: #ff6b6b;
-  --dn-bg: #2e1214;
-  --blue: #6ea8fe;
-  --blue-bg: #0f1e33;
-  --violet: #c58af9;
-  --violet-bg: #24143a;
-  --mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --bg: #06110c;
+  --bg-1: #0b1d15;
+  --card: rgba(255, 255, 255, 0.035);
+  --card-2: #0f241b;
+  --line: rgba(214, 255, 230, 0.075);
+  --line-2: rgba(214, 255, 230, 0.13);
+  --ink: #ecf5ef;
+  --ink-2: #cbdbd1;
+  --muted: #8ea698;
+  --dim: #5e786a;
+  --amber: #c6f45e;              /* accent: lime */
+  --amber-bg: rgba(198, 244, 94, 0.12);
+  --up: #5be38f;
+  --up-bg: rgba(91, 227, 143, 0.12);
+  --dn: #ff7a6e;
+  --dn-bg: rgba(255, 122, 110, 0.12);
+  --blue: #7fd8e8;
+  --blue-bg: rgba(127, 216, 232, 0.12);
+  --violet: #c3b4ff;
+  --violet-bg: rgba(195, 180, 255, 0.12);
+  --glow: 0 0 24px rgba(198, 244, 94, 0.35);
+  --mono: var(--font-mono), ui-sans-serif, system-ui, sans-serif;
   --sans: var(--font-sans), system-ui, -apple-system, Segoe UI, sans-serif;
-  --radius: 10px;
+  --radius: 18px;
   --nav-h: 58px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   color-scheme: dark;
@@ -270,3 +272,97 @@ input[type="range"] { accent-color: var(--amber); width: 100%; }
 .or { text-align: center; font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.14em; margin: 4px 0; }
 .note { font-size: 11px; color: var(--dim); text-align: center; margin-top: 10px; }
 .ok { color: var(--up); font-size: 12px; margin-top: 6px; }
+
+/* ======================================================================
+   Forest Glow theme layer: shapes, glass and glow on top of the tokens.
+   ====================================================================== */
+html, body { background: var(--bg); }
+body {
+  background:
+    radial-gradient(900px 520px at 15% -8%, rgba(46, 140, 88, 0.30) 0%, transparent 60%),
+    radial-gradient(700px 480px at 110% 12%, rgba(198, 244, 94, 0.07) 0%, transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+@media (min-width: 560px) {
+  .shell { background: transparent; border-color: var(--line); }
+}
+.mono, .num { font-variant-numeric: tabular-nums; }
+.logo { letter-spacing: -0.01em; font-weight: 800; font-size: 22px; }
+.when { letter-spacing: 0.02em; text-transform: none; font-size: 11.5px; }
+.topbar { background: rgba(6, 17, 12, 0.72); border-bottom: 1px solid var(--line);
+          backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%); }
+
+/* pills */
+.seg button, .chip { border-radius: 999px; padding: 6px 13px; letter-spacing: 0.02em; background: rgba(255,255,255,0.03); }
+.seg button.on, .chip.on { color: #0a1a10; box-shadow: var(--glow); }
+.asof { border-radius: 999px; border-style: solid; padding: 5px 10px; }
+.sec { letter-spacing: 0.08em; font-weight: 600; }
+
+/* glass surfaces */
+.card, .pulse, .panel, .rsec, .qa, .routine, .empty {
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.018) 100%);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 30px rgba(0,0,0,0.25);
+}
+.card { border-left: 1px solid var(--line); padding: 14px; margin: 0 12px 12px; }
+.card.unread { border-color: rgba(198, 244, 94, 0.35); }
+.pulse { margin: 14px 12px 6px; padding: 16px 16px 10px; border-radius: 22px;
+         background: radial-gradient(420px 200px at 85% 0%, rgba(198,244,94,0.13), transparent 70%),
+                     linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); }
+.pulse .v { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+.pulse .d { font-size: 12.5px; font-weight: 600; }
+.play { border-radius: 999px; background: var(--amber); color: #0a1a10; font-weight: 700; box-shadow: var(--glow); border: 0; }
+.play.on { background: #fff; }
+.routine { border-style: solid; }
+.rsec { overflow: hidden; }
+.rsec > header { border-bottom: 1px solid var(--line); }
+.rsec > header h2 { letter-spacing: 0.08em; }
+
+/* tags & chips as soft pills */
+.tag { border-radius: 999px; padding: 2px 8px; letter-spacing: 0.04em; }
+.why { border-radius: 999px; background: rgba(255,255,255,0.03); }
+.flag { border-radius: 12px; }
+.cite { border-radius: 999px; padding: 0 6px; }
+.av { background: linear-gradient(135deg, rgba(127,216,232,0.25), rgba(198,244,94,0.18)); color: var(--ink); }
+table.t td { border-top: 1px solid var(--line); }
+
+/* buttons & inputs */
+.btn { border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid var(--line-2); }
+.btn.primary { background: var(--amber); color: #0a1a10; border: 0; box-shadow: var(--glow); }
+.btn.primary:hover { filter: brightness(1.05); }
+.txt { border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--line-2); }
+.hold .qty { border-radius: 10px; background: rgba(255,255,255,0.04); }
+.stat div { border-radius: 14px; background: rgba(255,255,255,0.035); }
+
+/* floating ask bar + nav: frosted glass */
+.ask { border-radius: 20px; background: rgba(13, 34, 25, 0.82); border: 1px solid var(--line-2);
+       backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%);
+       box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+.ask .icon { border-radius: 12px; }
+.ask .icon[type="submit"] { background: var(--amber); color: #0a1a10; box-shadow: var(--glow); }
+.suggest { border-radius: 18px; background: rgba(13, 34, 25, 0.95); backdrop-filter: blur(18px); }
+nav.tabs { background: rgba(6, 17, 12, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+           letter-spacing: 0.04em; font-weight: 600; }
+nav.tabs a { border-radius: 999px; padding: 7px 14px; }
+nav.tabs a.on { color: #0a1a10; background: var(--amber); box-shadow: var(--glow); }
+nav.tabs .badge { background: #fff; color: #0a1a10; }
+
+/* sheets & login */
+.sheet { border-radius: 24px 24px 0 0; background: #0d2219; }
+.sheet blockquote { border-left-color: var(--amber); }
+.login .logo { font-size: 38px; }
+.login li span { color: var(--amber); font-weight: 700; }
+
+/* portfolio chart */
+.pchart { margin: 10px -6px 0; position: relative; }
+.pchart svg { display: block; width: 100%; height: 120px; overflow: visible; }
+.pchart .ranges { display: flex; gap: 6px; justify-content: flex-end; margin: 4px 6px 0; }
+.pchart .ranges button { font-size: 10.5px; padding: 3px 10px; border-radius: 999px; color: var(--muted);
+                         border: 1px solid var(--line-2); font-weight: 600; }
+.pchart .ranges button.on { background: var(--amber-bg); color: var(--amber); border-color: rgba(198,244,94,0.35); }
+.pchart .tip { position: absolute; top: -6px; transform: translateX(-50%); padding: 4px 9px; border-radius: 999px;
+               font-size: 11px; font-weight: 700; background: rgba(13,34,25,0.95); border: 1px solid rgba(198,244,94,0.35);
+               white-space: nowrap; pointer-events: none; }
+.pchart .delta { font-size: 11px; color: var(--muted); margin: 2px 6px 0; }

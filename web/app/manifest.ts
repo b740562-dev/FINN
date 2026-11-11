@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "What changed in your portfolio, why it matters, and research grounded in primary sources.",
     start_url: "/",
     display: "standalone",
-    background_color: "#0a0c0f",
-    theme_color: "#0a0c0f",
+    background_color: "#06110c",
+    theme_color: "#06110c",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
+// Labels, numbers and the logo use Manrope (geometric sans) with tabular figures.
+const mono = Manrope({ subsets: ["latin"], variable: "--font-mono", display: "swap", weight: ["500", "600", "700", "800"] });
 
 export const metadata: Metadata = {
   title: "FINN",
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0c0f",
+  themeColor: "#06110c",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

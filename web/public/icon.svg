@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#0a0c0f"/>
-  <text x="96" y="330" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="210" font-weight="700" fill="#e6e8eb">F</text>
-  <rect x="300" y="290" width="58" height="58" rx="10" fill="#f0b43c"/>
+  <defs><radialGradient id="g" cx="0.23" cy="0.12" r="1"><stop offset="0" stop-color="#16502f"/><stop offset="0.6" stop-color="#081a12"/></radialGradient></defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <path d="M118 128h182v48H168v60h94v46h-94v102h-50z" fill="#ecf5ef"/>
+  <rect x="310" y="326" width="58" height="58" rx="10" fill="#c6f45e"/>
 </svg>
