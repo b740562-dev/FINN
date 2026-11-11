@@ -5,7 +5,8 @@ import { api } from "@/lib/api";
 import type { Digest } from "@/lib/types";
 import { inr, pct, tone } from "@/lib/format";
 import { useData } from "@/components/data";
-import { EventCard, RoutineList } from "@/components/cards";
+import { RoutineList } from "@/components/cards";
+import { NewsRow, StoryRail, useNewsSheet } from "@/components/news";
 import { BriefButton, briefScript } from "@/components/brief";
 import { PortfolioChart } from "@/components/portfolio-chart";
 import { ProfileButton } from "@/components/profile-menu";
@@ -55,6 +56,8 @@ export default function Today() {
     ? new Date(asOf).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
     : new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
   const t = me?.totals;
+  const news = useNewsSheet();
+  const top = digest?.matters.slice(0, 6) ?? [];
 
   return (
     <>
@@ -109,7 +112,7 @@ export default function Today() {
 
       {err && <div className="err">{err}</div>}
 
-      <div className="sec"><span>── What matters</span>{digest && <span>{digest.counts.filings} filings scanned</span>}</div>
+      <div className="sec news-h"><span><i className="live" />Top news</span>{digest && <span>{digest.counts.matters} of {digest.counts.filings} filings</span>}</div>
 
       {loading && !digest ? (
         <>
@@ -127,8 +130,16 @@ export default function Today() {
           )}
         </div>
       ) : (
-        digest?.matters.map((e) => <EventCard key={`${e.symbol}-${e.filing_ids[0]}`} e={e} />)
+        digest && (
+          <>
+            <StoryRail items={top} onOpen={news.open} />
+            <div className="nlist">
+              {digest.matters.map((e) => <NewsRow key={`${e.symbol}-${e.filing_ids[0]}`} e={e} onOpen={news.open} />)}
+            </div>
+          </>
+        )
       )}
+      {news.sheet}
 
       {digest && <RoutineList items={digest.routine} mix={digest.routine_mix} />}
     </>

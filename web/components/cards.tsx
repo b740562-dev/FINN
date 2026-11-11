@@ -1,17 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import type { Bio, DigestEvent, Metric, ResultsCard } from "@/lib/types";
-import { bp, crore, pct, shortDate, tone } from "@/lib/format";
-
-const VARIANT: Record<string, string> = {
-  results: "results",
-  management_change: "mgmt",
-  "M&A": "deal",
-  fund_raise: "deal",
-  capex: "deal",
-};
+import { bp, crore, pct, tone } from "@/lib/format";
 
 function initials(name: string) {
   return name.split(/\s+/).filter((w) => /^[A-Z]/.test(w)).slice(0, 2).map((w) => w[0]).join("");
@@ -89,23 +80,6 @@ export function ResultsTable({ card }: { card: ResultsCard }) {
   );
 }
 
-/** Red flags and filing-vs-table mismatches as compact pills. */
-function Flags({ card }: { card?: ResultsCard }) {
-  const flags = card?.flags ?? [];
-  const mism = (card?.cross_check ?? []).filter((x) => !x.consistent);
-  if (!flags.length && !mism.length) return null;
-  return (
-    <div className="pills">
-      {flags.map((f) => <span key={f} className="pill red">⚑ {f.replace("Auditor qualified the accounts", "Qualified audit")}</span>)}
-      {mism.map((x) => (
-        <span key={x.filing_text} className="pill amber" title={`Filing says “${x.filing_text}”; table shows ${pct(x.card_yoy_pct)} YoY`}>
-          ≠ Filing says {pct(x.stated_pct, 0)} · table {pct(x.card_yoy_pct, 0)}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 export function BioBlock({ bio, full = false, compact = false }: { bio: Bio; full?: boolean; compact?: boolean }) {
   return (
     <div className="person">
@@ -131,69 +105,6 @@ export function BioBlock({ bio, full = false, compact = false }: { bio: Bio; ful
         )}
       </div>
     </div>
-  );
-}
-
-export function EventCard({ e }: { e: DigestEvent }) {
-  const [open, setOpen] = useState(false);
-  const variant = VARIANT[e.category] ?? "other";
-  const card = e.enrichment?.results_card;
-  const bios = (e.enrichment?.bios ?? []).filter((b) => b.status !== "not_found");
-  const people = e.enrichment?.people ?? [];
-  const leaving = people.filter((p) => p.change === "leaving");
-  const joining = people.filter((p) => p.change !== "leaving");
-  const isResults = e.category === "results" && card?.status === "ready";
-  const isMgmt = e.category === "management_change";
-
-  return (
-    <article className={`card ${variant}`} onClick={() => setOpen(!open)} role="button" aria-expanded={open}>
-      <div className="ch">
-        <span>
-          <Link href={`/research/${e.symbol}`} className="tk" onClick={(ev) => ev.stopPropagation()}>{e.symbol}</Link>
-          <span className="tag">{isResults ? card?.quarter_label : e.label}</span>
-          {e.related > 0 && <span className="related">+{e.related}</span>}
-        </span>
-        <span className="src">{shortDate(e.filed_at)}</span>
-      </div>
-
-      {isResults && card ? (
-        <>
-          <KpiTiles card={card} />
-          <Flags card={card} />
-        </>
-      ) : isMgmt ? (
-        <>
-          {(leaving.length > 0 || joining.length > 0) && (
-            <div className="swap">
-              {leaving[0] && <span className="out">{leaving[0].name}</span>}
-              {leaving[0] && joining[0] && <span className="arrow">→</span>}
-              {joining[0] && <span className="in">{joining[0].name}</span>}
-              <span className="role">{(joining[0] ?? leaving[0])?.role.replace("Managing Director and Chief Executive Officer", "MD & CEO")}</span>
-            </div>
-          )}
-          {bios.map((b) => <BioBlock key={b.name} bio={b} full={open} compact={people.length > 0} />)}
-          {!people.length && <div className="head">{e.one_liner || e.headline}</div>}
-        </>
-      ) : (
-        <div className="head">{e.one_liner || e.headline}</div>
-      )}
-
-      {!isResults && e.factors.length > 0 && (
-        <div className="pills">{e.factors.slice(0, 2).map((f) => <span key={f} className="pill">{f}</span>)}</div>
-      )}
-
-      {open && (
-        <div className="more" onClick={(ev) => ev.stopPropagation()}>
-          {isResults && card && <ResultsTable card={card} />}
-          <div className="why">{e.why}</div>
-          <div className="dim" style={{ fontSize: 11, marginTop: 6 }}>{e.headline}</div>
-          <div style={{ marginTop: 8, display: "flex", gap: 14 }}>
-            {e.url && <a className="link" href={e.url} target="_blank" rel="noreferrer">Filing ↗</a>}
-            <Link className="link" href={`/research/${e.symbol}`}>Research {e.symbol} →</Link>
-          </div>
-        </div>
-      )}
-    </article>
   );
 }
 
