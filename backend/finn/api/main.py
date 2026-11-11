@@ -119,6 +119,48 @@ def me(user: User = Depends(current_user)):
             **_portfolio(user.id), "rules": _rules(user.id)}
 
 
+# ------------------------------------------------------------------ profile
+PROFILE_FIELDS = ("full_name", "gender", "work_company", "work_role", "education", "city", "experience", "bio")
+
+
+class ProfileIn(BaseModel):
+    full_name: str | None = Field(None, max_length=80)
+    gender: str | None = Field(None, pattern="^(female|male|non_binary|prefer_not_to_say)$")
+    work_company: str | None = Field(None, max_length=80)
+    work_role: str | None = Field(None, max_length=80)
+    education: str | None = Field(None, max_length=120)
+    city: str | None = Field(None, max_length=60)
+    experience: str | None = Field(None, pattern="^(new|intermediate|experienced|professional)$")
+    bio: str | None = Field(None, max_length=280)
+
+
+def _profile(user: User) -> dict:
+    with cursor(commit=False) as c:
+        c.execute(f"select {', '.join(PROFILE_FIELDS)}, created_at, updated_at from public.profiles where user_id = %s",
+                  (user.id,))
+        r = c.fetchone()
+    if not r:
+        raise HTTPException(404, "Profile not found (account not seeded)")
+    d = dict(zip(PROFILE_FIELDS + ("created_at", "updated_at"), r))
+    d["created_at"] = d["created_at"].isoformat() if d["created_at"] else None
+    d["updated_at"] = d["updated_at"].isoformat() if d["updated_at"] else None
+    return {**d, "email": user.email, "is_anonymous": user.is_anonymous}
+
+
+@app.get("/profile")
+def get_profile(user: User = Depends(current_user)):
+    return _profile(user)
+
+
+@app.put("/profile")
+def put_profile(req: ProfileIn, user: User = Depends(current_user)):
+    vals = {k: (getattr(req, k) or "").strip() or None for k in PROFILE_FIELDS}
+    with cursor() as c:
+        c.execute(f"update public.profiles set {', '.join(f'{k} = %s' for k in PROFILE_FIELDS)}, updated_at = now() "
+                  f"where user_id = %s", (*vals.values(), user.id))
+    return _profile(user)
+
+
 @app.get("/me/history")
 def history(days: int = Query(90, ge=7, le=400), user: User = Depends(current_user)):
     """Portfolio value per trading day (current holdings x that day's close).

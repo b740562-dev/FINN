@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation";
 import { post } from "@/lib/api";
 import { inr } from "@/lib/format";
 import { useAuth } from "./auth";
-import { useData } from "./data";
+import { initialsOf, useData } from "./data";
 
 /** Top-right avatar on every screen: who you are, a glance at the account,
  *  shortcuts to settings, and the account actions (save, reset, sign out). */
 export function ProfileButton() {
   const { session, signOut } = useAuth();
-  const { me, unread, refreshMe } = useData();
+  const { me, unread, refreshMe, profile } = useData();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -21,7 +21,9 @@ export function ProfileButton() {
   const user = session?.user as { email?: string | null; is_anonymous?: boolean; created_at?: string } | undefined;
   const guest = Boolean(user?.is_anonymous);
   const email = user?.email || null;
-  const initial = guest || !email ? "G" : email[0].toUpperCase();
+  const initial = initialsOf(profile, email, guest);
+  const displayName = profile?.full_name || (guest ? "Guest investor" : email ?? "Signed in");
+  const workLine = [profile?.work_role, profile?.work_company].filter(Boolean).join(" · ");
   const since = user?.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : null;
 
   useEffect(() => {
@@ -69,13 +71,18 @@ export function ProfileButton() {
             <div className="pm-head">
               <div className="pm-av">{initial}</div>
               <div style={{ minWidth: 0 }}>
-                <div className="pm-name">{guest ? "Guest investor" : email ?? "Signed in"}</div>
+                <div className="pm-name">{displayName}</div>
+                {workLine && <div className="pm-work">{workLine}</div>}
                 <div className="pm-sub">
                   <span className={`pm-tag ${guest ? "guest" : ""}`}>{guest ? "Guest" : "Account"}</span>
                   {since && <span>since {since}</span>}
                 </div>
               </div>
             </div>
+
+            <button className="pm-edit" onClick={() => go("/profile")}>
+              <span>✎</span>Edit profile<em>Name · gender · email · work · education</em>
+            </button>
 
             <div className="pm-stats">
               <div><b>{me ? inr(me.totals.value, { compact: true }) : "–"}</b><span>Portfolio</span></div>

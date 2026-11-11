@@ -11,6 +11,21 @@ export type Holding = {
   weight: number;
 };
 
+export type Profile = {
+  full_name: string | null;
+  gender: "female" | "male" | "non_binary" | "prefer_not_to_say" | null;
+  work_company: string | null;
+  work_role: string | null;
+  education: string | null;
+  city: string | null;
+  experience: "new" | "intermediate" | "experienced" | "professional" | null;
+  bio: string | null;
+  email: string | null;
+  is_anonymous: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 export type Rules = {
   volume_multiple: number;
   move_pct: number;

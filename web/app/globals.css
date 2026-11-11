@@ -531,3 +531,26 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .bbt { font-size: 13.5px; font-weight: 800; color: var(--ink); }
 .bbc { margin-top: 2px; }
 .bbp { margin-top: 6px; font-size: 12px; color: var(--muted); }
+
+/* profile menu: edit entry + work line */
+.pm-work { font-size: 11.5px; color: var(--ink-2); font-weight: 600; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-edit { width: 100%; margin-top: 12px; display: grid; grid-template-columns: 22px 1fr; column-gap: 8px; align-items: center;
+           text-align: left; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(198,244,94,0.3);
+           background: var(--amber-bg); font-weight: 800; font-size: 13.5px; color: var(--amber); }
+.pm-edit > span { grid-row: span 2; font-size: 16px; text-align: center; }
+.pm-edit em { font-style: normal; font-size: 10.5px; font-weight: 600; color: var(--muted); }
+
+/* edit profile page */
+.pf { padding-bottom: 20px; }
+.pf-hero { display: flex; gap: 14px; align-items: center; padding: 18px 16px 12px; }
+.pf-av { width: 62px; height: 62px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center;
+         font-weight: 800; font-size: 22px; color: #0a1a10; background: linear-gradient(135deg, #c6f45e, #7fe0a0); box-shadow: var(--glow); }
+.pf-name { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+.pf-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.pf .panel h3 { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--amber); margin-bottom: 8px; }
+.pf-f { display: grid; gap: 6px; margin-top: 10px; }
+.pf-f > span { font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.pf-hint { font-style: normal; font-weight: 600; color: var(--dim); }
+.pf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pf textarea.txt { resize: vertical; min-height: 70px; }
+.pf-actions { padding: 4px 12px 0; display: grid; gap: 8px; }
