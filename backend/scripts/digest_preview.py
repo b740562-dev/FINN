@@ -24,5 +24,14 @@ print(f"WINDOW {days:g}d -> {c['filings']} filings, {c['events']} events | "
 for e in d["matters"]:
     rel = f" (+{e['related']} related)" if e["related"] else ""
     print(f"{e['score']:>5.0f}  {e['symbol']:10} {e['label']:12} {e['filed_at'][:10]}{rel}")
-    print(f"        {e['one_liner'] or e['headline']}")
+    card = (e.get("enrichment") or {}).get("results_card") or {}
+    if card.get("status") == "ready":
+        print(f"        {card['quarter_label']}: {card['headline']}")
+        for f in card.get("flags", []):
+            print(f"        ⚑ {f}")
+        for x in card.get("cross_check", []):
+            if not x["consistent"]:
+                print(f"        ! filing says '{x['filing_text']}', table shows {x['card_yoy_pct']}% YoY")
+    else:
+        print(f"        {e['one_liner'] or e['headline']}")
     print(f"        why: {e['why']}")
