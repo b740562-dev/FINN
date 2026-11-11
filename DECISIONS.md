@@ -101,7 +101,8 @@ We only use sources that serve a plainly identified client. We don't imitate bro
 | DB | Supabase Postgres + pgvector (keep-alive ping so the project doesn't pause) |
 | Auth | Supabase Auth: Google OAuth + email magic link + guest (anonymous sign-in), RLS on user tables |
 | Scheduler | GitHub Actions cron |
-| LLMs | Gemini **Flash-Lite/Flash** for bulk work (classification, one-liners, extraction, verification) · Gemini **Pro** only for reasoning (Promise vs Delivered, Bull/Bear, chat synthesis) · Gemini embeddings |
+| LLMs | Verified on our key (11 Nov). The 2.5 models are closed to new users, and no Pro text model is available.<br>• Bulk work (classification, one-liners, extraction, quote verification): **`gemini-3.5-flash-lite`**<br>• Reasoning (Promise vs Delivered, Bull/Bear, chat synthesis): **`gemini-3.8-flash`** with a higher thinking level<br>• Embeddings: **`gemini-embedding-2`**, truncated to 768 dims (pgvector HNSW indexes cap at 2000) |
+| DB driver | `pg8000` (pure Python). Windows Smart App Control blocks psycopg's bundled libpq DLL. TLS is always verified against Supabase's CA (`backend/supabase-ca.crt`) |
 | Search | Tavily/Brave free tier (bios only) |
 
 ## 6. Key assumptions
