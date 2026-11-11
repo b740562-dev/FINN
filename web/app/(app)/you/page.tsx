@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, post, put } from "@/lib/api";
 import type { Holding, Rules } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { useAuth } from "@/components/auth";
-import { useData } from "@/components/data";
+import { initialsOf, profileCompleteness, useData } from "@/components/data";
+import { Ring } from "@/components/ring";
 import { UsagePanel } from "@/components/usage";
 import { ProfileButton } from "@/components/profile-menu";
 
@@ -16,9 +18,15 @@ const CAT_LABEL: Record<string, string> = {
   agm_egm: "AGM/EGM", pledging: "Pledge", unclassified: "Routine",
 };
 
+const SOURCES: [string, string, string][] = [
+  ["₹", "Prices", "Yahoo · end of day"],
+  ["▤", "Filings", "NSE / BSE via screener"],
+  ["❑", "Research", "Company documents only"],
+];
+
 export default function You() {
-  const { session, signOut, saveAccountEmail } = useAuth();
-  const { me, refreshMe, setUnread } = useData();
+  const { session } = useAuth();
+  const { me, refreshMe, setUnread, unread, profile } = useData();
   const [rules, setRules] = useState<Rules | null>(null);
   const [savingRules, setSavingRules] = useState(false);
   const [rulesMsg, setRulesMsg] = useState<string | null>(null);
@@ -26,9 +34,10 @@ export default function You() {
   const [holdMsg, setHoldMsg] = useState<string | null>(null);
   const [addQ, setAddQ] = useState("");
   const [addSugg, setAddSugg] = useState<{ symbol: string; name: string }[]>([]);
-  const [email, setEmail] = useState("");
-  const [acctMsg, setAcctMsg] = useState<string | null>(null);
   const isGuest = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous);
+  const email = (session?.user as { email?: string | null } | undefined)?.email || null;
+  const workLine = [profile?.work_role, profile?.work_company].filter(Boolean).join(" · ");
+  const pctDone = profileCompleteness(profile, email);
 
   useEffect(() => {
     api<Rules>("/rules").then(setRules).catch(() => {});
@@ -85,14 +94,40 @@ export default function You() {
         <ProfileButton />
         <div className="brand">
           <span className="logo">YOU</span>
-          <span className="when">{isGuest ? "guest account" : session?.user.email}</span>
         </div>
       </header>
 
-      <div className="sec"><span>── What counts as unusual</span></div>
-      <section className="panel" id="rules">
-        <h3>Price &amp; volume alerts</h3>
-        
+      <section className="yc">
+        <div className="yc-top">
+          <div className="yc-av">{initialsOf(profile, email, isGuest)}</div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="yc-name">{profile?.full_name || (isGuest ? "Guest investor" : email || "Your profile")}</div>
+            {workLine && <div className="yc-work">{workLine}</div>}
+            <Link href="/profile" className="yc-edit">Edit profile <span aria-hidden>▸</span></Link>
+          </div>
+          <Ring pct={pctDone} size={44} stroke={4} />
+        </div>
+        <Link href="/profile" className="yc-band">
+          <span className="yc-badge">{isGuest ? "☁" : pctDone >= 100 ? "✓" : "★"}</span>
+          <span className="yc-bt">{isGuest ? "Save your account" : pctDone >= 100 ? "Profile complete" : "Complete your profile"}</span>
+          <span className="yc-chev" aria-hidden>›</span>
+        </Link>
+      </section>
+
+      <div className="ytiles">
+        <Link href="#portfolio" className="ytile">
+          <span className="yi">◫</span>
+          <span><small>Portfolio</small><b>{me ? inr(me.totals.value, { compact: true }) : "–"}</b></span>
+        </Link>
+        <Link href="/alerts" className="ytile">
+          <span className="yi">◉</span>
+          <span><small>Alerts</small><b className={unread ? "hot" : ""}>{unread} unread</b></span>
+        </Link>
+      </div>
+
+      <section className="panel ysec" id="rules">
+        <h2>Alert sensitivity</h2>
+        <h3>Price &amp; volume</h3>
         {rules ? (
           <>
             <div className="field">
@@ -110,8 +145,7 @@ export default function You() {
                 Per-stock: {Object.entries(rules.overrides).map(([s, o]) => `${s} ${o.move_pct ? `±${o.move_pct}%` : ""}${o.volume_multiple ? ` ${o.volume_multiple}×` : ""}`).join(" · ")}
               </p>
             )}
-            <h3 style={{ marginTop: 14 }}>Filing types that alert you</h3>
-            
+            <h3 style={{ marginTop: 14 }}>Filing types</h3>
             <div className="chips">
               {(rules.all_categories ?? Object.keys(CAT_LABEL)).filter((c) => c !== "unclassified").map((c) => {
                 const on = rules.categories.includes(c);
@@ -124,15 +158,15 @@ export default function You() {
               })}
             </div>
             <div style={{ marginTop: 12 }}>
-              <button className="btn primary" onClick={saveRules} disabled={savingRules}>{savingRules ? "REBUILDING…" : "SAVE RULES"}</button>
+              <button className="btn primary" onClick={saveRules} disabled={savingRules}>{savingRules ? "Rebuilding…" : "Save rules"}</button>
             </div>
             {rulesMsg && <div className="ok">{rulesMsg}</div>}
           </>
         ) : <div className="skel sm" style={{ margin: 0 }} />}
       </section>
 
-      <div className="sec"><span>── Portfolio</span>{me && <span>{inr(me.totals.value, { compact: true })}</span>}</div>
-      <section className="panel" id="portfolio">
+      <section className="panel ysec" id="portfolio">
+        <h2>Portfolio<span>{rows.length} holdings{me ? ` · ${inr(me.totals.value, { compact: true })}` : ""}</span></h2>
         {rows.map((r, i) => (
           <div className="hold" key={r.symbol}>
             <div><div className="tk">{r.symbol}</div><div className="co">{r.name}</div></div>
@@ -156,46 +190,24 @@ export default function You() {
           
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-          <button className="btn primary" onClick={saveHoldings}>SAVE HOLDINGS</button>
-          <button className="btn ghost" onClick={resetDemo}>RESET TO DEMO</button>
+          <button className="btn primary" onClick={saveHoldings}>Save holdings</button>
+          <button className="btn ghost" onClick={resetDemo}>Reset to demo</button>
         </div>
         {holdMsg && <div className="ok">{holdMsg}</div>}
       </section>
 
       {me?.user.is_admin && (
         <>
-          <div className="sec"><span>── How FINN thinks</span><span>admin</span></div>
-          <section className="panel" id="usage"><UsagePanel /></section>
+          <section className="panel ysec" id="usage"><h2>How FINN thinks<span>admin</span></h2><UsagePanel /></section>
         </>
       )}
 
-      <div className="sec"><span>── Account</span></div>
-      <section className="panel" id="account">
-        {isGuest ? (
-          <>
-            <h3>You&apos;re using a guest account</h3>
-            <p className="sub">Add an email to keep this portfolio.</p>
-            <form style={{ display: "flex", gap: 8 }} onSubmit={async (e) => {
-              e.preventDefault();
-              try { await saveAccountEmail(email); setAcctMsg(`Check ${email} to confirm.`); } catch (er) { setAcctMsg((er as Error).message); }
-            }}>
-              <input className="txt" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-              <button className="btn" disabled={!email}>SAVE</button>
-            </form>
-            {acctMsg && <div className="ok">{acctMsg}</div>}
-          </>
-        ) : (
-          <p className="sub" style={{ margin: 0 }}>Signed in as {session?.user.email}.</p>
-        )}
-        <div style={{ marginTop: 12 }}><button className="btn ghost" onClick={signOut}>SIGN OUT</button></div>
-      </section>
-
-      <div className="sec"><span>── Sources</span></div>
-      <section className="panel" id="sources">
-        <div className="chiprow" style={{ margin: 0 }}>
-          <span className="pill">EOD prices · Yahoo</span><span className="pill">Filings · NSE/BSE via screener</span>
-          <span className="pill">Research · company documents only</span><span className="pill">Not investment advice</span>
-        </div>
+      <section className="panel ysec" id="sources">
+        <h2>Data sources</h2>
+        {SOURCES.map(([ic, k, v]) => (
+          <div className="yrow" key={k}><span className="yi">{ic}</span><span className="yk">{k}</span><span className="yv">{v}</span></div>
+        ))}
+        <p className="yfoot">Not investment advice.</p>
       </section>
     </>
   );

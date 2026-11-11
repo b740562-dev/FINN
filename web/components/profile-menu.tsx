@@ -92,7 +92,7 @@ export function ProfileButton() {
             </div>
 
             {guest && (
-              <button className="pm-cta" onClick={() => go("/you#account")}>
+              <button className="pm-cta" onClick={() => go("/profile")}>
                 <span>☁</span><div><b>Save your account</b><small>Keep this portfolio across devices</small></div>
               </button>
             )}
