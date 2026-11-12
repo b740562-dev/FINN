@@ -10,7 +10,7 @@ import { ProfileButton } from "@/components/profile-menu";
 type Co = { symbol: string; name: string; sector: string | null; market_cap_cr: number | null };
 type Tag = "important" | "volatile" | "promising" | "steady";
 type Signal = {
-  symbol: string; name: string; weight: number; tags: Tag[]; primary: Tag;
+  symbol: string; name: string; weight?: number; tags: Tag[]; primary: Tag;
   vol_20d: number | null; ret_1m: number | null; ret_3m: number | null; pat_yoy: number | null; quarter: string | null;
   news: { materiality: number; category: string; headline: string } | null;
 };
@@ -38,6 +38,7 @@ function Index() {
   const [all, setAll] = useState<Co[] | null>(null);
   const [sig, setSig] = useState<Signals | null>(null);
   const [filter, setFilter] = useState<Tag | null>(null);
+  const [otherSig, setOtherSig] = useState<Signals | null>(null);
 
   useEffect(() => {
     api<Co[]>(`/companies?q=${encodeURIComponent(q.length >= 2 ? q : "")}`).then(setAll).catch(() => setAll([]));
@@ -52,6 +53,24 @@ function Index() {
   const picks = list.filter((c) => RESEARCH_SET.includes(c.symbol));
   const others = list.filter((c) => !held.has(c.symbol) && !RESEARCH_SET.includes(c.symbol));
   const holdings = (sig?.items ?? []).filter((x) => !filter || x.tags.includes(filter));
+  const otherKey = others.map((c) => c.symbol).join(",");
+  useEffect(() => {
+    if (!otherKey || searching) return;
+    api<Signals>(`/signals?symbols=${encodeURIComponent(otherKey)}`).then(setOtherSig).catch(() => setOtherSig(null));
+  }, [otherKey, searching]);
+  const otherShown = (otherSig?.items ?? []).filter((x) => !filter || x.tags.includes(filter));
+  const mcap = new Map(list.map((c) => [c.symbol, c.market_cap_cr]));
+
+  const legend = (s: Signals) => (
+    <div className="hs-legend">
+      {(Object.keys(TAG) as Tag[]).filter((t) => s.counts[t]).map((t) => (
+        <button key={t} className={`hs-key ${t} ${filter === t ? "on" : ""}`} title={s.rules[t]}
+          onClick={() => setFilter(filter === t ? null : t)} aria-pressed={filter === t}>
+          <i />{s.counts[t]} {TAG[t].label}
+        </button>
+      ))}
+    </div>
+  );
 
   const row = (c: Co, cls = "other") => (
     <Link key={c.symbol} href={`/research/${c.symbol}`} className={`card ${cls}`} style={{ display: "block" }}>
@@ -102,14 +121,7 @@ function Index() {
           {sig && sig.items.length > 0 && (
             <section>
               <div className="sec"><span>── Your holdings</span><span>{sig.items.length}</span></div>
-              <div className="hs-legend">
-                {(Object.keys(TAG) as Tag[]).filter((t) => sig.counts[t]).map((t) => (
-                  <button key={t} className={`hs-key ${t} ${filter === t ? "on" : ""}`} title={sig.rules[t]}
-                    onClick={() => setFilter(filter === t ? null : t)} aria-pressed={filter === t}>
-                    <i />{sig.counts[t]} {TAG[t].label}
-                  </button>
-                ))}
-              </div>
+              {legend(sig)}
               {holdings.map((x) => (
                 <Link key={x.symbol} href={`/research/${x.symbol}`} className={`hs-card ${x.primary}`}>
                   <div className="hs-top">
@@ -123,7 +135,7 @@ function Index() {
                     <span><small>3M</small><b className={(x.ret_3m ?? 0) >= 0 ? "up" : "dn"}>{pctTxt(x.ret_3m)}</b></span>
                     <span><small>Volatility</small><b className={(x.vol_20d ?? 0) >= 35 ? "warn" : ""}>{x.vol_20d === null ? "–" : `${x.vol_20d.toFixed(0)}%`}</b></span>
                     <span><small>PAT YoY{x.quarter ? ` · ${x.quarter}` : ""}</small><b className={(x.pat_yoy ?? 0) >= 0 ? "up" : "dn"}>{pctTxt(x.pat_yoy)}</b></span>
-                    <span><small>Weight</small><b>{x.weight.toFixed(0)}%</b></span>
+                    <span><small>Weight</small><b>{(x.weight ?? 0).toFixed(0)}%</b></span>
                   </div>
                   {x.news && <div className="hs-news"><i aria-hidden>!</i>{x.news.headline}</div>}
                 </Link>
@@ -134,7 +146,29 @@ function Index() {
           {others.length > 0 && (
             <section>
               <div className="sec"><span>── Other tracked</span><span>{others.length}</span></div>
-              {others.map((c) => row(c))}
+              {otherSig ? (
+                <>
+                  {legend(otherSig)}
+                  {otherShown.map((x) => (
+                    <Link key={x.symbol} href={`/research/${x.symbol}`} className={`hs-card mini ${x.primary}`}>
+                      <div className="hs-top">
+                        <span className={`hs-ic ${x.primary}`} aria-hidden>{TAG[x.primary].icon}</span>
+                        <span className="hs-who"><b>{x.symbol}</b><small>{x.name}</small></span>
+                        <span className="hs-tags">
+                          {x.tags.map((t) => <span key={t} className={`hs-tag ${t}`}>{TAG[t].label}</span>)}
+                        </span>
+                      </div>
+                      <div className="hs-stats three">
+                        <span><small>3M</small><b className={(x.ret_3m ?? 0) >= 0 ? "up" : "dn"}>{pctTxt(x.ret_3m)}</b></span>
+                        <span><small>Volatility</small><b className={(x.vol_20d ?? 0) >= 35 ? "warn" : ""}>{x.vol_20d === null ? "–" : `${x.vol_20d.toFixed(0)}%`}</b></span>
+                        <span><small>PAT YoY</small><b className={(x.pat_yoy ?? 0) >= 0 ? "up" : "dn"}>{pctTxt(x.pat_yoy)}</b></span>
+                        <span><small>Mcap</small><b>{mcap.get(x.symbol) ? `₹${(mcap.get(x.symbol)! / 100000).toFixed(1)}L cr` : "–"}</b></span>
+                      </div>
+                      {x.news && <div className="hs-news"><i aria-hidden>!</i>{x.news.headline}</div>}
+                    </Link>
+                  ))}
+                </>
+              ) : others.map((c) => row(c))}
             </section>
           )}
         </>

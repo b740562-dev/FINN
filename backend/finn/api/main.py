@@ -333,39 +333,43 @@ IMPORTANT_MAT = 60     # filing materiality
 IMPORTANT_DAYS = 14
 
 
-@app.get("/holdings/signals")
-def holding_signals(user: User = Depends(current_user)):
+SIGNAL_RULES = {"important": f"filing with materiality ≥ {IMPORTANT_MAT} in the last {IMPORTANT_DAYS} days",
+                "volatile": f"20-day price volatility ≥ {VOL_HIGH:g}% a year",
+                "promising": "price up over 3 months and latest quarter's profit up > 10% YoY",
+                "steady": "none of the above"}
+_TAG_ORDER = {"important": 0, "volatile": 1, "promising": 2, "steady": 3}
+
+
+def compute_signals(symbols: list[str]) -> dict[str, dict]:
+    """Tags + the numbers behind them, for any companies FINN tracks."""
     import math
 
     from finn.push.results import build_card
 
-    pf = _portfolio(user.id)
-    syms = [h["symbol"] for h in pf["holdings"]]
-    if not syms:
-        return {"items": [], "counts": {}, "rules": {}}
+    if not symbols:
+        return {}
     with cursor(commit=False) as c:
         c.execute("""select symbol, array_agg(close order by date desc) from (
                        select symbol, date, close, row_number() over (partition by symbol order by date desc) rn
                        from public.prices_eod where symbol = any(%s::text[])) x
-                     where rn <= 70 group by symbol""", (syms,))
+                     where rn <= 70 group by symbol""", (symbols,))
         closes = {s: [float(v) for v in arr if v is not None] for s, arr in c.fetchall()}
         c.execute("""select distinct on (symbol) symbol, materiality, category, coalesce(one_liner, subject), filed_at
                      from public.filings
                      where symbol = any(%s::text[]) and materiality >= %s
                        and filed_at >= now() - make_interval(days => %s::int)
-                     order by symbol, materiality desc, filed_at desc""", (syms, IMPORTANT_MAT, IMPORTANT_DAYS))
+                     order by symbol, materiality desc, filed_at desc""", (symbols, IMPORTANT_MAT, IMPORTANT_DAYS))
         news = {s: {"materiality": int(m), "category": cat, "headline": h, "filed_at": ts.isoformat()}
                 for s, m, cat, h, ts in c.fetchall()}
         c.execute("select symbol, tables->'quarters', basis from public.fundamentals where symbol = any(%s::text[])",
-                  (syms,))
+                  (symbols,))
         quarters = {s: (q if isinstance(q, dict) else json.loads(q or "{}"), b) for s, q, b in c.fetchall()}
 
     def ret(px: list[float], n: int) -> float | None:
         return round((px[0] / px[n] - 1) * 100, 1) if len(px) > n and px[n] else None
 
-    items, counts = [], {"important": 0, "volatile": 0, "promising": 0, "steady": 0}
-    for h in pf["holdings"]:
-        s = h["symbol"]
+    out = {}
+    for s in symbols:
         px = closes.get(s, [])
         daily = [math.log(px[i] / px[i + 1]) for i in range(min(20, len(px) - 1)) if px[i] and px[i + 1]]
         vol = None
@@ -389,18 +393,39 @@ def holding_signals(user: User = Depends(current_user)):
             tags.append("promising")
         if not tags:
             tags.append("steady")
-        for t in tags:
+        out[s] = {"symbol": s, "tags": tags, "primary": tags[0], "vol_20d": vol, "ret_1m": r1m, "ret_3m": r3m,
+                  "pat_yoy": pat_yoy, "quarter": quarter, "news": news.get(s)}
+    return out
+
+
+def _counts(items: list[dict]) -> dict[str, int]:
+    counts = {k: 0 for k in _TAG_ORDER}
+    for x in items:
+        for t in x["tags"]:
             counts[t] += 1
-        items.append({"symbol": s, "name": h["name"], "weight": h["weight"], "tags": tags, "primary": tags[0],
-                      "vol_20d": vol, "ret_1m": r1m, "ret_3m": r3m, "pat_yoy": pat_yoy, "quarter": quarter,
-                      "news": news.get(s)})
-    order = {"important": 0, "volatile": 1, "promising": 2, "steady": 3}
-    items.sort(key=lambda x: (order[x["primary"]], -(x["weight"] or 0)))
-    return {"items": items, "counts": counts,
-            "rules": {"important": f"filing with materiality ≥ {IMPORTANT_MAT} in the last {IMPORTANT_DAYS} days",
-                      "volatile": f"20-day price volatility ≥ {VOL_HIGH:g}% a year",
-                      "promising": "price up over 3 months and latest quarter's profit up > 10% YoY",
-                      "steady": "none of the above"}}
+    return counts
+
+
+@app.get("/holdings/signals")
+def holding_signals(user: User = Depends(current_user)):
+    pf = _portfolio(user.id)
+    sig = compute_signals([h["symbol"] for h in pf["holdings"]])
+    items = [{**sig[h["symbol"]], "name": h["name"], "weight": h["weight"]} for h in pf["holdings"]]
+    items.sort(key=lambda x: (_TAG_ORDER[x["primary"]], -(x["weight"] or 0)))
+    return {"items": items, "counts": _counts(items), "rules": SIGNAL_RULES}
+
+
+@app.get("/signals")
+def signals(symbols: str = Query(..., max_length=2000), user: User = Depends(current_user)):
+    """Same tags for any tracked companies (Research → Other tracked)."""
+    syms = [x.strip().upper() for x in symbols.split(",") if x.strip()][:100]
+    with cursor(commit=False) as c:
+        c.execute("select symbol, name from public.companies where symbol = any(%s::text[])", (syms,))
+        names = dict(c.fetchall())
+    sig = compute_signals([x for x in syms if x in names])
+    items = [{**v, "name": names[k]} for k, v in sig.items()]
+    items.sort(key=lambda x: _TAG_ORDER[x["primary"]])
+    return {"items": items, "counts": _counts(items), "rules": SIGNAL_RULES}
 
 
 # ---------------------------------------------------------------- holdings
