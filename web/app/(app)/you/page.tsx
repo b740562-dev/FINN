@@ -123,11 +123,13 @@ export default function You() {
           </div>
           <Ring pct={pctDone} size={44} stroke={4} />
         </div>
-        <Link href={isGuest ? "/login" : "/profile"} className="yc-band">
-          <span className="yc-badge">{isGuest ? "→" : pctDone >= 100 ? "✓" : "★"}</span>
-          <span className="yc-bt">{isGuest ? "Log in to keep this portfolio" : pctDone >= 100 ? "Profile complete" : "Complete your profile"}</span>
-          <span className="yc-chev" aria-hidden>›</span>
-        </Link>
+        {(isGuest || pctDone < 100) && (
+          <Link href={isGuest ? "/login" : "/profile"} className="yc-band">
+            <span className="yc-badge">{isGuest ? "→" : "★"}</span>
+            <span className="yc-bt">{isGuest ? "Log in to keep this portfolio" : "Complete your profile"}</span>
+            <span className="yc-chev" aria-hidden>›</span>
+          </Link>
+        )}
       </section>
 
       <div className="ytiles">
