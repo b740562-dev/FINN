@@ -1125,3 +1125,13 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .sy-pacts { display: flex; gap: 6px; flex: none; }
 .sy-pacts a { font-size: 11.5px; font-weight: 700; color: var(--blue); padding: 4px 8px; }
 .sy-pacts button { font-size: 11.5px; font-weight: 800; color: #06110c; background: var(--amber); padding: 4px 10px; border-radius: 9px; }
+
+/* ---------- Surya icon in the app palette (lime / forest green, no gold) ---------- */
+.surya-orb { border-color: rgba(198,244,94,0.45); background: radial-gradient(circle at 50% 40%, rgba(198,244,94,0.10), rgba(8,22,15,0.92) 70%);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 0 20px rgba(198,244,94,0.22); }
+.surya-orb .orb-ring text { fill: #c6f45e; }
+.surya-orb .orb-core, .surya-mark { color: #0b2214;
+  background: radial-gradient(circle at 35% 30%, #f1ffc9, #c6f45e 48%, #5be38f); box-shadow: 0 0 16px rgba(198,244,94,0.45); }
+.surya-orb .orb-tip { border-color: rgba(198,244,94,0.45); }
+.surya-orb .orb-tip::before { border-left-color: rgba(198,244,94,0.45); border-bottom-color: rgba(198,244,94,0.45); }
+.surya-orb .orb-tip b, .surya-orb .orb-tip small { color: #c6f45e; }
