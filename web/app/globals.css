@@ -925,3 +925,14 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .surya-orb .orb-tip b { display: block; font-size: 12.5px; font-weight: 800; color: var(--ink); line-height: 1.35; }
 .surya-orb .orb-tip small { display: block; margin-top: 3px; font-size: 10.5px; color: #ffd66b; }
 .surya-orb:hover .orb-tip, .surya-orb:focus-visible .orb-tip { opacity: 1; visibility: visible; transform: translate(0, -50%); }
+
+/* Surya mic: record -> server-side transcription -> message box */
+.sy-mic { width: 36px; height: 36px; border-radius: 14px; display: grid; place-items: center; flex: none; color: var(--muted); }
+.sy-mic:hover { color: var(--amber); }
+.sy-mic.recording { background: var(--dn); color: #fff; box-shadow: 0 0 0 4px rgba(255,122,110,0.22); animation: sypulse 1.3s infinite; }
+.sy-mic:disabled { opacity: 0.6; }
+@keyframes sypulse { 50% { box-shadow: 0 0 0 8px rgba(255,122,110,0.08); } }
+.sy-rec { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 8px 4px; font-size: 13.5px; color: var(--ink); }
+.sy-rec b { font-family: var(--mono); font-weight: 700; color: var(--dn); }
+.sy-rec span { margin-left: auto; font-size: 11px; color: var(--dim); white-space: nowrap; }
+.sy-recdot { width: 9px; height: 9px; border-radius: 50%; background: var(--dn); animation: pulse 1s infinite; }

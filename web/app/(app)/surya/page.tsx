@@ -7,6 +7,7 @@ import type { Citation } from "@/lib/types";
 import { useAuth } from "@/components/auth";
 import { Cited, useCiteSheet } from "@/components/research";
 import { DocUploadForm, type Uploaded } from "@/components/my-docs";
+import { MAX_SECONDS, type Recording, startRecording, voiceSupported } from "@/lib/voice";
 
 const GREETING = "Hello, I’m Surya, your investment guide. What decision can I help you with today?";
 const STARTERS = [
@@ -62,6 +63,19 @@ export default function Surya() {
   const endRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
   const [hydrated, setHydrated] = useState(false);
+  // Voice: idle -> recording -> transcribing -> idle (transcript lands in the box)
+  const [voice, setVoice] = useState<"idle" | "recording" | "transcribing">("idle");
+  const [secs, setSecs] = useState(0);
+  const [canVoice, setCanVoice] = useState(false);
+  const recRef = useRef<Recording | null>(null);
+
+  useEffect(() => setCanVoice(voiceSupported()), []);
+  useEffect(() => {
+    if (voice !== "recording") return;
+    const t = setInterval(() => setSecs((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [voice]);
+  useEffect(() => () => recRef.current?.cancel(), []);   // leaving the page releases the mic
 
   // Conversation survives a reload on this device (convenience only).
   useEffect(() => {
@@ -113,6 +127,52 @@ export default function Surya() {
       boxRef.current?.focus();
     }
   }, [msgs, thinking]);
+
+  function note(t: string) {
+    setMsgs((ms) => [...ms, { id: uid(), role: "note", text: t }]);
+  }
+
+  const stopVoice = useCallback(async () => {
+    const rec = recRef.current;
+    if (!rec) return;
+    recRef.current = null;
+    setVoice("transcribing");
+    try {
+      const wav = await rec.stop();
+      const fd = new FormData();
+      fd.set("audio", wav, "voice.wav");
+      const r = await api<{ text: string }>("/chat/transcribe", { method: "POST", body: fd });
+      setText((t) => (t.trim() ? `${t.trim()} ${r.text}` : r.text));
+      requestAnimationFrame(() => {
+        const box = boxRef.current;
+        if (!box) return;
+        box.focus();
+        box.style.height = "auto";
+        box.style.height = `${Math.min(box.scrollHeight, 120)}px`;
+      });
+    } catch (e) {
+      note((e as Error).message);
+    } finally {
+      setVoice("idle");
+    }
+  }, []);
+
+  async function toggleVoice() {
+    if (voice === "recording") return stopVoice();
+    if (voice !== "idle") return;
+    try {
+      recRef.current = await startRecording();
+      setSecs(0);
+      setVoice("recording");
+    } catch (e) {
+      const name = (e as Error).name;
+      note(name === "NotAllowedError" ? "Microphone access was blocked. Allow it in the browser to talk to Surya."
+        : "Couldn't start the microphone on this device.");
+    }
+  }
+
+  // Auto-stop at the limit.
+  useEffect(() => { if (voice === "recording" && secs >= MAX_SECONDS) stopVoice(); }, [voice, secs, stopVoice]);
 
   function uploaded(r: Uploaded) {
     setUpload(false);
@@ -194,11 +254,32 @@ export default function Surya() {
             <path d="m21 11.5-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9" />
           </svg>
         </button>
-        <textarea ref={boxRef} rows={1} value={text} placeholder="Message Surya…" maxLength={800}
+        {voice === "recording" ? (
+          <div className="sy-rec" aria-live="polite">
+            <i className="sy-recdot" />Listening… <b>{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}</b>
+            <span>tap ■ to finish</span>
+          </div>
+        ) : (
+        <textarea ref={boxRef} rows={1} value={text} placeholder={voice === "transcribing" ? "Transcribing…" : "Message Surya…"} maxLength={800}
           onChange={(e) => { setText(e.target.value); e.currentTarget.style.height = "auto"; e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 120)}px`; }}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(text); } }}
-          aria-label="Message Surya" />
-        <button className="sy-send" disabled={!text.trim() || thinking} aria-label="Send">
+          aria-label="Message Surya" disabled={voice === "transcribing"} />
+        )}
+        {canVoice && (
+          <button type="button" className={`sy-mic ${voice}`} onClick={toggleVoice} disabled={voice === "transcribing" || thinking}
+            aria-label={voice === "recording" ? "Stop and transcribe" : "Speak your question"} title={voice === "recording" ? "Stop" : "Speak"}>
+            {voice === "recording" ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="3" /></svg>
+            ) : voice === "transcribing" ? (
+              <span className="md-spin" style={{ margin: 0 }} />
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+              </svg>
+            )}
+          </button>
+        )}
+        <button className="sy-send" disabled={!text.trim() || thinking || voice !== "idle"} aria-label="Send">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
             <path d="M12 19V5M5 12l7-7 7 7" />
           </svg>

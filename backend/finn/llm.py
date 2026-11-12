@@ -139,6 +139,42 @@ def generate_json(
     raise RuntimeError(f"LLM call failed for task={task}") from last
 
 
+TRANSCRIBE_PROMPT = (
+    "Transcribe this voice note exactly as spoken. It is an investor asking a question, often about Indian "
+    "listed companies (e.g. HDFC Bank, Reliance, TCS, BEL), financial terms (EBITDA, NIM, concall, order book) "
+    "and rupee amounts (lakh, crore). Keep the language that was spoken; write company names and tickers in "
+    "their usual spelling. Return only the transcript, no quotes or commentary. If there is no speech, return "
+    "an empty string."
+)
+
+
+def transcribe(audio: bytes, mime_type: str, *, ref_id: str | None = None) -> str:
+    """Speech -> text with the bulk model (audio input). Not cached: every
+    recording is different. Logged like any other call."""
+    use, last = BULK, None
+    for attempt in range(3):
+        try:
+            resp = client().models.generate_content(
+                model=use,
+                contents=[types.Part.from_bytes(data=audio, mime_type=mime_type), TRANSCRIBE_PROMPT],
+                config=types.GenerateContentConfig(temperature=0.0,
+                                                   thinking_config=types.ThinkingConfig(thinking_level="low")),
+            )
+            u = resp.usage_metadata
+            tin = (u.prompt_token_count or 0) if u else 0
+            tout = ((u.candidates_token_count or 0) + (getattr(u, "thoughts_token_count", 0) or 0)) if u else 0
+            _log("transcribe", use, tin, tout, False, "voice", ref_id)
+            return (resp.text or "").strip().strip('"').strip()
+        except Exception as e:
+            last = e
+            if any(s in str(e) for s in ("503", "504", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "overloaded")) \
+                    and use == BULK and FALLBACK.get(BULK):
+                use = FALLBACK[BULK]
+                continue
+            time.sleep(1.5 * (attempt + 1))
+    raise RuntimeError("Transcription failed") from last
+
+
 def embed(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> list[list[float]]:
     resp = client().models.embed_content(
         model=EMBED,
