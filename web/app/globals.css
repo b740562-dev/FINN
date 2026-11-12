@@ -848,9 +848,6 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .lg-row .link:disabled { color: var(--dim); }
 
 /* ---------- Ask Surya: entry pill + chat window ---------- */
-.surya-pill { display: inline-flex; align-items: center; gap: 5px; flex: none; height: 34px; padding: 0 11px 0 9px; margin-right: 6px;
-  border-radius: 12px; font-size: 12px; font-weight: 800; color: #06110c; white-space: nowrap;
-  background: linear-gradient(135deg, #ffd66b, #c6f45e); box-shadow: 0 0 14px rgba(255,214,107,0.35); }
 .shell.full { padding-bottom: 0; }
 .surya-mark { display: inline-grid; place-items: center; flex: none; border-radius: 50%; color: #3a2a00;
   background: radial-gradient(circle at 35% 30%, #fff1b8, #ffd66b 45%, #e9a93a); box-shadow: 0 0 16px rgba(255,214,107,0.35); }
@@ -901,3 +898,20 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .sy-sheet { max-height: 88dvh; }
 .sy-sheet-t { display: block; font-size: 15px; font-weight: 800; margin-bottom: 4px; }
 .sy-sheet .md-form { margin-top: 8px; }
+
+/* ---------- Ask Surya orb: the one floating control, "ASK ME" around it ---------- */
+.surya-orb { position: fixed; z-index: 31; width: 66px; height: 66px; border-radius: 50%;
+  left: calc(50% - min(228px, 50% - 12px)); bottom: calc(var(--nav-h) + 10px + var(--safe-b));
+  display: grid; place-items: center; background: rgba(13,34,25,0.88); border: 1px solid rgba(255,214,107,0.35);
+  backdrop-filter: blur(16px); box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 0 18px rgba(255,214,107,0.18); }
+.surya-orb .orb-ring { position: absolute; inset: 0; width: 100%; height: 100%; animation: orbspin 14s linear infinite; }
+.surya-orb .orb-ring text { fill: #ffd66b; font-size: 8.2px; font-weight: 800; letter-spacing: 0.06em; font-family: var(--sans); }
+.surya-orb .orb-core { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #3a2a00;
+  background: radial-gradient(circle at 35% 30%, #fff1b8, #ffd66b 45%, #e9a93a); box-shadow: 0 0 14px rgba(255,214,107,0.45); }
+.surya-orb:active .orb-core { transform: scale(0.94); }
+@keyframes orbspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .surya-orb .orb-ring { animation: none; } }
+
+.qa-ask { display: flex; gap: 8px; margin-top: 10px; }
+.qa-ask .txt { flex: 1; }
+.qa-ask .btn { padding: 0 16px; font-size: 16px; }

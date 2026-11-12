@@ -78,13 +78,6 @@ function Dossier() {
     }
   }, [symbol]);
 
-  // Questions typed in the global ask bar while on this page.
-  useEffect(() => {
-    const h = (e: Event) => ask((e as CustomEvent<string>).detail);
-    window.addEventListener("finn:ask", h);
-    return () => window.removeEventListener("finn:ask", h);
-  }, [ask]);
-
   // Arrived with a question (e.g. "Did Titan hit FY27 guidance?").
   useEffect(() => {
     const q = params.get("q");
@@ -239,6 +232,14 @@ function Dossier() {
             {m.model && <div className="dim mono" style={{ fontSize: 9.5, marginTop: 6 }}>{m.model.replace("gemini-", "")}</div>}
           </div>
         ))}
+        <form className="qa-ask" onSubmit={(e) => {
+          e.preventDefault();
+          const box = e.currentTarget.elements.namedItem("q") as HTMLInputElement;
+          if (box.value.trim()) { ask(box.value.trim()); box.value = ""; }
+        }}>
+          <input name="q" className="txt" placeholder={`Ask about ${symbol}…`} maxLength={500} autoComplete="off" />
+          <button className="btn primary" aria-label="Ask">→</button>
+        </form>
       </div>
       {sheet}
     </>
