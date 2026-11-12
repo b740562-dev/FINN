@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { DEV_TOKEN, DEV_USER_ID, devModeAvailable, devSignedIn, setDevSignedIn } from "@/lib/devauth";
+import { clearChatState } from "@/lib/chat-store";
 
 type AuthCtx = {
   session: Session | null;
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInGuest = useCallback(async () => {
+    clearChatState();                    // a new login starts Surya with a fresh chat
     if (devModeAvailable()) {
       setDevSignedIn(true);
       setSession(devSession());
@@ -85,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const sb = supabase();
     const { error } = await sb.auth.verifyOtp({ email, token: code.trim(), type: kind });
     if (error) throw error;
+    clearChatState();
     if (kind === "email_change") await sb.auth.refreshSession();   // pick up the verified email
   }, []);
 
@@ -104,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase().auth.signOut();
     }
     sessionStorage.removeItem("finn.bootstrapped");
+    clearChatState();
   }, []);
 
   return (

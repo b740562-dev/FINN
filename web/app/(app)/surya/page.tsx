@@ -9,6 +9,7 @@ import { Cited, useCiteSheet } from "@/components/research";
 import { DocUploadForm, type Uploaded } from "@/components/my-docs";
 import { MAX_SECONDS, type Recording, startRecording, voiceSupported } from "@/lib/voice";
 import { downloadMarkdown, printPdf } from "@/lib/chat-export";
+import { chatKey } from "@/lib/chat-store";
 
 const GREETING = "Hello, I’m Surya, your investment guide. What decision can I help you with today?";
 const STARTERS = [
@@ -17,7 +18,6 @@ const STARTERS = [
   "What is BEL's order book?",
   "When should I rebalance my portfolio?",
 ];
-const STORE = "finn.surya.v2";   // { threadId, msgs }: the open conversation on this device
 const STAGE: Record<string, string> = { queued: "Queued", reading: "Reading the PDF", indexing: "Indexing passages", analysing: "Analysing" };
 
 type Co = { symbol: string; name: string; documents: string[] };
@@ -67,6 +67,8 @@ export default function Surya() {
   const router = useRouter();
   const { session } = useAuth();
   const guest = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous);
+  // The open conversation: this user, this browser session only (cleared on every log-in / sign-out).
+  const store = chatKey(session?.user?.id);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -96,15 +98,15 @@ export default function Surya() {
   // Conversation survives a reload on this device (convenience only).
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORE);
+      const raw = sessionStorage.getItem(store);
       if (raw) { const v = JSON.parse(raw); setMsgs(v.msgs ?? []); setThreadId(v.threadId ?? null); }
     } catch {}
     setHydrated(true);
   }, []);
   useEffect(() => {
     if (!hydrated) return;      // never overwrite the saved chat before it has been read
-    try { localStorage.setItem(STORE, JSON.stringify({ threadId, msgs: msgs.slice(-40) })); } catch {}
-  }, [msgs, threadId, hydrated]);
+    try { sessionStorage.setItem(store, JSON.stringify({ threadId, msgs: msgs.slice(-40) })); } catch {}
+  }, [msgs, threadId, hydrated, store]);
 
   async function openHistory() {
     setShowHistory(true);
