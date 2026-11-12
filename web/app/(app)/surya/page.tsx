@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth";
 import { Cited, useCiteSheet } from "@/components/research";
 import { DocUploadForm, type Uploaded } from "@/components/my-docs";
 import { MAX_SECONDS, type Recording, startRecording, voiceSupported } from "@/lib/voice";
+import { downloadMarkdown, printPdf } from "@/lib/chat-export";
 
 const GREETING = "Hello, I’m Surya, your investment guide. What decision can I help you with today?";
 const STARTERS = [
@@ -76,6 +77,7 @@ export default function Surya() {
   const [hydrated, setHydrated] = useState(false);
   const [threadId, setThreadId] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [threads, setThreads] = useState<Thread[] | null>(null);
   // Voice: idle -> recording -> transcribing -> idle (transcript lands in the box)
   const [voice, setVoice] = useState<"idle" | "recording" | "transcribing">("idle");
@@ -248,6 +250,13 @@ export default function Surya() {
           </svg>
         </button>
         {msgs.length > 0 && (
+          <button className="sy-new" onClick={() => setShowExport(true)} aria-label="Export chat" title="Export chat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
+            </svg>
+          </button>
+        )}
+        {msgs.length > 0 && (
           <button className="sy-new" onClick={newChat} aria-label="New chat" title="New chat">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M12 5v14M5 12h14" />
@@ -365,6 +374,25 @@ export default function Surya() {
             <div className="grab" />
             <b className="sy-sheet-t">Add a report for Surya to read</b>
             <DocUploadForm guest={guest} initial={upload} onCancel={() => setUpload(false)} onUploaded={uploaded} />
+          </div>
+        </div>
+      )}
+      {showExport && (
+        <div className="sheet-bg" onClick={() => setShowExport(false)} role="dialog" aria-modal aria-label="Export chat">
+          <div className="sheet sy-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="grab" />
+            <b className="sy-sheet-t">Export this conversation</b>
+            <p className="sy-exp-sub">{msgs.filter((m) => m.role === "user").length} questions · sources and their links included</p>
+            <div className="sy-exp">
+              <button onClick={() => { printPdf(msgs, GREETING); setShowExport(false); }}>
+                <span className="sy-exp-ic pdf">PDF</span>
+                <span><b>Save as PDF</b><small>Formatted for reading or sharing. Choose “Save as PDF” in the print dialog.</small></span>
+              </button>
+              <button onClick={() => { downloadMarkdown(msgs, GREETING); setShowExport(false); }}>
+                <span className="sy-exp-ic md">MD</span>
+                <span><b>Download as text (.md)</b><small>Plain Markdown, opens in any notes app.</small></span>
+              </button>
+            </div>
           </div>
         </div>
       )}

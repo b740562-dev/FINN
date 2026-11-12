@@ -1077,3 +1077,16 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .wc-cta { display: inline-block; margin-top: 10px; font-size: 12px; font-weight: 800; color: var(--amber); }
 .wc-more { display: block; width: calc(100% - 24px); margin: 0 12px 12px; padding: 10px; border-radius: 14px; font-size: 12.5px; font-weight: 700;
   color: var(--muted); background: rgba(255,255,255,0.03); border: 1px dashed var(--line-2); }
+
+/* Surya: export */
+.sy-exp-sub { font-size: 12px; color: var(--muted); margin: 2px 0 12px; }
+.sy-exp { display: grid; gap: 8px; }
+.sy-exp button { display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px; border-radius: 14px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--line); }
+.sy-exp button:hover { border-color: rgba(198,244,94,0.4); }
+.sy-exp b { display: block; font-size: 14px; }
+.sy-exp small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.sy-exp-ic { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; flex: none;
+  font-family: var(--mono); font-size: 11px; font-weight: 800; }
+.sy-exp-ic.pdf { color: var(--dn); background: rgba(255,122,110,0.14); }
+.sy-exp-ic.md { color: var(--blue); background: rgba(127,216,232,0.12); }
