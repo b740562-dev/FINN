@@ -56,7 +56,11 @@ Next.js PWA (Vercel) ──Bearer JWT──▶ FastAPI (Render) ──▶ Supaba
 
 - **Prices:** yfinance (`.NS`), end of day.
 - **Filings, financials, document links:** screener.in. BSE's and NSE's own APIs and PDF hosts refuse non-browser clients, and we don't imitate browsers to get around that. So the announcement feed accumulates from screener's per-company list (latest 5, polled every 2h).
-- **Annual reports and transcripts are uploaded**, either in-app or dropped into `backend/docs_inbox/<SYMBOL>/` as `AR-2026.pdf` / `CC-2026-11.pdf`.
+- **New reports are picked up automatically where the source allows.** Every scheduler run records each company's newly published concall transcripts, investor presentations and annual reports (`finn/pull/autodocs.py`, table `report_candidates`).
+  - FINN downloads each one with its honest, self-identifying client: directly when the host serves plain clients (company websites, some NSE archives), or from the company's own investor-relations page when the listed link is on BSE.
+  - It then indexes the document, rebuilds that company's research and alerts its holders ("TCS Q2 FY27 concall is out. FINN read it…").
+  - BSE refuses non-browser clients (90 of 90 links returned 403 on 12 Nov), and we don't imitate browsers. So those reports show under **Research → New reports** and inside Surya as a **one-tap, pre-filled upload** that any logged-in user can complete.
+- **Manual uploads are still possible**, either in-app or dropped into `backend/docs_inbox/<SYMBOL>/` as `AR-2026.pdf` / `CC-2026-11.pdf`.
   - Documents are shared by every user, so **only saved (non-guest) accounts can upload**. One bad upload shouldn't change everyone's research.
   - Uploads run as **background jobs** (read → index → analyse) that the app polls, so a 300-page annual report never hits a request timeout.
   - The job finishes by rebuilding Promise vs Delivered, so it's ready when the user looks.

@@ -1,5 +1,5 @@
 """The push pipeline the scheduler runs:
-ingest -> classify -> results cards -> management bios -> alerts.
+ingest -> new reports (auto pickup) -> classify -> results cards -> management bios -> alerts.
 
 Usage: python -m finn.jobs.pipeline [SYMBOL ...]
 Default universe = demo portfolio + research set + anything any user holds.
@@ -10,6 +10,7 @@ import time
 
 from finn.db import cursor
 from finn.jobs.ingest import main as ingest
+from finn.pull.autodocs import fetch_pending
 from finn.push.alerts import run_alerts
 from finn.push.bios import enrich_management_changes
 from finn.push.classify import classify_pending
@@ -31,6 +32,8 @@ def universe() -> list[str]:
 def run(symbols: list[str]) -> None:
     t0 = time.time()
     ingest(symbols)
+    # New transcripts / presentations / annual reports: download what hosts allow, queue the rest.
+    print("reports:", fetch_pending())
     print("classify:", classify_pending())
     print("results cards:", attach_results_cards())
     print("bios:", enrich_management_changes())

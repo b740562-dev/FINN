@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 
 from finn import llm
@@ -49,16 +50,25 @@ def embed_query(q: str) -> list[float]:
 
 def search(symbol: str, query: str, *, k: int = 8, kind: str | None = None,
            document_ids: list[int] | None = None, pool: int = 30) -> list[Chunk]:
-    vec = "[" + ",".join(f"{x:.6f}" for x in embed_query(query)) + "]"
+    # If the embedding API is rate-limited (e.g. while a large report is being indexed
+    # on the free tier), degrade to keyword search instead of failing the user's question.
+    try:
+        vec = "[" + ",".join(f"{x:.6f}" for x in embed_query(query)) + "]"
+    except Exception:
+        vec = None
+    fts_query = query if vec else " or ".join(w for w in re.findall(r"[A-Za-z0-9]{3,}", query)) or query
     filt = " and (%s::text is null or d.kind = %s::text) and (%s::bigint[] is null or d.id = any(%s::bigint[]))"
     fargs = (kind, kind, document_ids, document_ids)
     with cursor(commit=False) as c:
-        c.execute(
-            f"""select ch.id from public.doc_chunks ch join public.documents d on d.id = ch.document_id
-                where ch.symbol = %s {filt}
-                order by ch.embedding <=> %s::extensions.vector limit %s::int""",
-            (symbol, *fargs, vec, pool))
-        vec_ids = [r[0] for r in c.fetchall()]
+        vec_ids = []
+        if vec:
+            c.execute(
+                f"""select ch.id from public.doc_chunks ch join public.documents d on d.id = ch.document_id
+                    where ch.symbol = %s {filt}
+                    order by ch.embedding <=> %s::extensions.vector limit %s::int""",
+                (symbol, *fargs, vec, pool))
+            vec_ids = [r[0] for r in c.fetchall()]
+        query = fts_query
         c.execute(
             f"""select ch.id from public.doc_chunks ch join public.documents d on d.id = ch.document_id
                 where ch.symbol = %s {filt}

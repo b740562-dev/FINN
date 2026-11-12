@@ -56,6 +56,7 @@ class CompanyPage:
     nse_symbol: str | None
     basis: str                # "consolidated" | "standalone"
     market_cap_cr: float | None = None
+    website: str | None = None        # the company's own site (for investor-relations fallbacks)
     tables: dict[str, Table] = field(default_factory=dict)
     announcements: list[Announcement] = field(default_factory=list)
     annual_reports: list[AnnualReport] = field(default_factory=list)
@@ -160,6 +161,8 @@ def _parse(symbol: str, html: str, basis: str) -> CompanyPage:
         nse_symbol=(re.search(r"symbol=([^&]+)", nse["href"]).group(1) if nse else None),
         basis=basis,
     )
+    site = next((x["href"] for x in soup.select("a[href^='http']") if x.get_text(strip=True).lower() == "website"), None)
+    page.website = site
     for li in soup.select("#top-ratios li"):
         name = li.select_one(".name")
         if name and name.get_text(strip=True).lower().startswith("market cap"):

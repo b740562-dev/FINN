@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import type { Citation } from "@/lib/types";
 import { useAuth } from "@/components/auth";
 import { Cited, useCiteSheet } from "@/components/research";
-import { DocUploadForm, type Uploaded } from "@/components/my-docs";
+import { DocUploadForm, type Preset, type Uploaded } from "@/components/my-docs";
 import { MAX_SECONDS, type Recording, startRecording, voiceSupported } from "@/lib/voice";
 import { downloadMarkdown, printPdf } from "@/lib/chat-export";
 import { chatKey } from "@/lib/chat-store";
@@ -28,11 +28,14 @@ type Msg = {
   kind?: "general" | "company_data" | "missing";
   citations?: Cite[];
   verified?: boolean;
+  pending_reports?: Pending[];
   companies?: Co[];
   job?: { symbol: string; id: number; done?: boolean };
 };
 type Cite = Citation & { url?: string };
-type Reply = { answer: string; kind: Msg["kind"]; citations: Cite[]; companies: Co[]; verified?: boolean; thread_id?: number | null };
+type Pending = { id: number; symbol: string; name: string; kind: string; period: string; label: string; url: string; host: string };
+type Reply = { answer: string; kind: Msg["kind"]; citations: Cite[]; companies: Co[]; verified?: boolean; thread_id?: number | null;
+  pending_reports?: Pending[] };
 type Thread = { id: number; title: string; updated_at: string; messages: number };
 
 function ago(iso: string) {
@@ -72,7 +75,7 @@ export default function Surya() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [upload, setUpload] = useState<{ symbol: string; name: string } | null | false>(false); // false = closed
+  const [upload, setUpload] = useState<Preset | null | false>(false); // false = closed
   const cite = useCiteSheet();
   const endRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
@@ -173,7 +176,7 @@ export default function Surya() {
       const r = await api<Reply>("/chat", { method: "POST", body: JSON.stringify({ message: q, history, thread_id: threadId }) });
       if (r.thread_id) setThreadId(r.thread_id);
       setMsgs((ms) => [...ms, { id: uid(), role: "assistant", text: r.answer, kind: r.kind, citations: r.citations,
-        companies: r.companies, verified: r.verified }]);
+        companies: r.companies, verified: r.verified, pending_reports: r.pending_reports }]);
     } catch (e) {
       setMsgs((ms) => [...ms, { id: uid(), role: "note", text: (e as Error).message }]);
     } finally {
@@ -313,7 +316,20 @@ export default function Surya() {
                   ))}
                 </div>
               ) : null}
-              {m.kind === "missing" && (
+              {(m.pending_reports ?? []).length > 0 && (
+                <div className="sy-pending">
+                  {(m.pending_reports ?? []).map((p) => (
+                    <div key={p.id} className="sy-prow">
+                      <span>📄 <b>{p.symbol} {p.label}</b> is out but not read yet</span>
+                      <span className="sy-pacts">
+                        <a href={p.url} target="_blank" rel="noreferrer">Open ↗</a>
+                        <button onClick={() => setUpload({ symbol: p.symbol, name: p.name, kind: p.kind, period: p.period, url: p.url })}>Add</button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {m.kind === "missing" && !(m.pending_reports ?? []).length && (
                 <button className="sy-add" onClick={() => setUpload(m.companies?.[0] ? { symbol: m.companies[0].symbol, name: m.companies[0].name } : null)}>
                   📎 Add {m.companies?.[0]?.symbol ?? "a"} report
                 </button>

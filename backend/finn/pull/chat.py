@@ -54,6 +54,18 @@ SCHEMA = {
 _SUFFIX = re.compile(r"\b(ltd|limited|company|co|corporation|corp|industries|india|of|the|and|&)\b\.?", re.I)
 
 
+# What people actually call these companies (lower-case), beyond symbol and legal name.
+COMMON_NAMES: dict[str, tuple[str, ...]] = {
+    "SBIN": ("sbi", "state bank"), "BHARTIARTL": ("airtel", "bharti"), "LT": ("l&t", "larsen"),
+    "M&M": ("mahindra", "m&m"), "HDFCBANK": ("hdfc bank",), "ICICIBANK": ("icici", "icici bank"),
+    "KOTAKBANK": ("kotak",), "AXISBANK": ("axis", "axis bank"), "BAJFINANCE": ("bajaj finance",),
+    "TMPV": ("tata motors",), "INFY": ("infosys",), "HINDUNILVR": ("hul", "hindustan unilever"),
+    "MARUTI": ("maruti",), "LICI": ("lic",), "ETERNAL": ("zomato", "eternal"), "IDEA": ("vodafone idea", "vi"),
+    "RELIANCE": ("ril", "reliance"), "TCS": ("tcs", "tata consultancy"), "ASIANPAINT": ("asian paints",),
+    "KPITTECH": ("kpit",), "BEL": ("bharat electronics",), "SUNPHARMA": ("sun pharma",),
+}
+
+
 def _core(name: str) -> str:
     return re.sub(r"\s+", " ", _SUFFIX.sub(" ", name or "")).strip().lower()
 
@@ -71,7 +83,7 @@ def _aliases() -> list[tuple[str, str, re.Pattern, str]]:
         firsts[f] = firsts.get(f, 0) + 1
     out = []
     for sym, name in rows:
-        alts, core, short = {sym.lower()}, _core(name), ""
+        alts, core, short = {sym.lower(), *COMMON_NAMES.get(sym, ())}, _core(name), ""
         if len(core) >= 3:
             alts.add(core)
             first = core.split(" ")[0]
@@ -261,12 +273,28 @@ def chat(message: str, history: list[dict] | None = None, symbols: list[str] | N
         answer, cites, kind = _missing_text(companies, out.get("missing_report")), [], "missing"
 
     cites = _with_sources(list({c["id"]: c for c in cites}.values()), nsym)
+
+    # Newer reports that are out but not read yet (their host blocks automated downloads):
+    # say so, so the user knows the answer may be stale and can add them in one tap.
+    pending = []
+    if companies:
+        from finn.pull.autodocs import pending_for
+        low = message.lower()
+        want = ("transcript" if re.search(r"concall|call|transcript|management said|commentary", low)
+                else "annual_report" if "annual report" in low
+                else "presentation" if re.search(r"presentation|deck|ppt", low) else None)
+        pending = sorted(pending_for([c["symbol"] for c in companies], include_recent_auto=False),
+                         key=lambda p: (p["kind"] != want, -int(p["period"].replace("-", ""))))[:3]
+        if pending and kind == "missing":
+            answer = (f"I don’t have that in a verified document yet. {pending[0]['symbol']}’s "
+                      f"{pending[0]['label']} is out and may answer it: add it with one tap below and I’ll read it.")
     # "Verified": a company answer with figures, every one of which passed the
     # number check against sources the user can open.
     verified = kind == "company_data" and bool(re.search(r"\d", re.sub(r"\[[cng]\d+\]", "", answer))) \
         and bool(cites) and all(c.get("url") for c in cites)
     return {"answer": answer, "kind": kind, "citations": cites, "verified": verified,
-            "companies": inventory, "verification": {"dropped_refs": dropped, "guard": guard},
+            "companies": inventory, "pending_reports": pending,
+            "verification": {"dropped_refs": dropped, "guard": guard},
             "model": llm.REASON}
 
 

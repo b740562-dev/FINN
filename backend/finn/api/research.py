@@ -117,9 +117,12 @@ def _run_ingest(job_id: int, sym: str, data: bytes, kind: str, period: date, fil
     try:
         res = ingest_pdf(sym, data, kind, period, filename, uploaded_by=user_id, source=source, source_url=source_url,
                          progress=lambda stage, info: _job_update(job_id, stage, info or None))
+        from finn.pull.autodocs import announce, mark_uploaded
+        mark_uploaded(sym, kind, period, res["document_id"])     # settles a pending "new report", if any
         if res["status"] == "duplicate":
             _job_update(job_id, "duplicate", res)
             return
+        announce(sym, res.get("label") or kind, res["document_id"], source_url)
         S.invalidate(sym)
         _job_update(job_id, "analysing", res)
         _rebuild(sym)
@@ -282,3 +285,26 @@ def remove_document(doc_id: int, background: BackgroundTasks, user: User = Depen
     S.invalidate(sym)
     background.add_task(_rebuild, sym)
     return {"status": "removed", "id": doc_id, "symbol": sym}
+
+
+# ---- new reports: picked up automatically, or waiting for a one-tap upload ----
+reports_router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+@reports_router.get("")
+def new_reports(symbol: str | None = None, user: User = Depends(current_user)):
+    """Reports published lately for your holdings and the research picks: the
+    ones FINN read on its own this week, and the ones that need a one-tap
+    upload because their host refuses automated downloads."""
+    from finn.pull.autodocs import pending_for
+    from finn.universe import RESEARCH_SET
+    if symbol:
+        syms = [_sym(symbol)]
+    else:
+        with cursor(commit=False) as c:
+            c.execute("select symbol from public.holdings where user_id = %s", (user.id,))
+            syms = [r[0] for r in c.fetchall()] + list(RESEARCH_SET)
+    items = pending_for(syms)
+    return {"items": items,
+            "counts": {"needs_upload": sum(1 for x in items if x["status"] == "needs_upload"),
+                       "auto_added": sum(1 for x in items if x["status"] == "ingested")}}

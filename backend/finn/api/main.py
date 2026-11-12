@@ -39,11 +39,12 @@ app.add_middleware(
 )
 
 # Pull side: research dossier, document upload, Q&A; plus the cost meter.
-from finn.api.research import docs_router, router as research_router, usage_router  # noqa: E402
+from finn.api.research import docs_router, reports_router, router as research_router, usage_router  # noqa: E402
 
 app.include_router(research_router)
 app.include_router(usage_router)
 app.include_router(docs_router)
+app.include_router(reports_router)
 
 from finn.api.chat import router as chat_router  # noqa: E402
 

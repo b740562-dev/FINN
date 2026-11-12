@@ -34,20 +34,29 @@ export type Uploaded = { status: string; label?: string; job_id?: number; symbol
 
 /** The add-a-document form: company, what it is, period, source, PDF. Used in
  *  You → Your documents and in the Surya chat. */
+/** A known report to add (from "New reports" or Surya): everything pre-filled
+ *  except the PDF itself. */
+export type Preset = { symbol: string; name: string; kind?: string; period?: string; url?: string };
+
 export function DocUploadForm({ guest, initial, onCancel, onUploaded }: {
   guest: boolean;
-  initial?: { symbol: string; name: string } | null;
+  initial?: Preset | null;
   onCancel: () => void;
   onUploaded: (r: Uploaded) => void;
 }) {
   const [q, setQ] = useState("");
   const [sugg, setSugg] = useState<{ symbol: string; name: string }[]>([]);
-  const [co, setCo] = useState<{ symbol: string; name: string } | null>(initial ?? null);
-  const [kind, setKind] = useState("transcript");
-  const [fy, setFy] = useState(String(fyOptions()[0]));
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
-  const [source, setSource] = useState("company_website");
-  const [link, setLink] = useState("");
+  const [co, setCo] = useState<{ symbol: string; name: string } | null>(
+    initial ? { symbol: initial.symbol, name: initial.name } : null);
+  const [kind, setKind] = useState(initial?.kind ?? "transcript");
+  const [fy, setFy] = useState(initial?.kind === "annual_report" && initial.period
+    ? initial.period.slice(0, 4) : String(fyOptions()[0]));
+  const [month, setMonth] = useState(() => (initial?.period && initial.kind !== "annual_report"
+    ? initial.period.slice(0, 7) : new Date().toISOString().slice(0, 7)));
+  const [source, setSource] = useState(initial?.url
+    ? (/bseindia/.test(initial.url) ? "bse" : /nseindia/.test(initial.url) ? "nse" : "company_website")
+    : "company_website");
+  const [link, setLink] = useState(initial?.url ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);

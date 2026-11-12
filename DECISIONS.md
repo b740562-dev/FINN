@@ -132,3 +132,13 @@ We only use sources that serve a plainly identified client. We don't imitate bro
   - every c# quote must occur in its chunk, unknown markers are stripped, and every number in a company answer must appear in the cited material (PDF number spacing normalised first). If not, the answer is replaced by "I don't have that in a verified document yet, add the matching report".
 - **Email log-in is a one-time code**, not a magic link. A guest who logs in attaches the email to their own account (`updateUser` + `verifyOtp(type=email_change)`), so portfolio and settings carry over; if the email already has an account, they sign in to that one. Supabase's email templates must include `{{ .Token }}`.
 - Guests show a generic person avatar and the name "Guest", with **Log in** above the date on Today and next to Edit profile on You.
+
+## Automatic report pickup (12 Nov)
+- **Problem:** research depended on someone uploading annual reports and transcripts by hand.
+- **Probe:** for 41 companies, the latest transcript, presentation and annual report links on screener came to 99 links. 90 point to BSE, which returned 403 to FINN's honest client for every one. Company-website and NSE-archive links downloaded fine.
+- **Decision:** automate everything that can be fetched honestly, and turn the rest into a one-tap task. We do not imitate browsers.
+  1. **Detect:** ingest records every recent report as a candidate from the screener page it already fetches, so this costs no extra requests.
+  2. **Download:** directly if the host allows, else find the same PDF on the company's own investor-relations page, matching document type plus month and year.
+  3. **Index:** then rebuild the research and alert holders.
+  4. **Otherwise mark it `needs_upload`:** it shows under Research → New reports and in Surya ("Q2 FY27 concall is out but not read yet"), with an upload form pre-filled except for the PDF. Any logged-in user can do it. Uploads settle the matching candidate.
+- **Production path:** a licensed exchange or vendor feed (BSE/NSE data products, or vendors) makes this fully hands-off.

@@ -12,6 +12,7 @@ import { NewsSearch } from "@/components/news-search";
 const CAT: Record<string, string> = {
   results: "Results", "M&A": "M&A", fund_raise: "Fund raise", management_change: "Management", litigation: "Legal",
   credit_rating: "Rating", pledging: "Pledge", insider_trading: "Insider", capex: "Capex", press_release: "Update",
+  report: "New report",
 };
 
 function dayLabel(d: string | null) {
@@ -52,7 +53,7 @@ function AlertCard({ a }: { a: Alert }) {
         <div className="head">{p.headline}</div>
         <div className="foot">
           <span className="why">{a.name} · materiality {p.materiality}</span>
-          {p.url && <a className="link" href={p.url} target="_blank" rel="noreferrer">OPEN FILING ↗</a>}
+          {p.url && <a className="link" href={p.url} target="_blank" rel="noreferrer">{p.category === "report" ? "OPEN REPORT ↗" : "OPEN FILING ↗"}</a>}
         </div>
       </article>
     );

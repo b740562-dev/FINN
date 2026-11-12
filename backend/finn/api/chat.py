@@ -50,7 +50,7 @@ def send(req: ChatReq, user: User = Depends(current_user)):
         out["model"] = None
     out["thread_id"] = None
     if not user.is_anonymous:                  # guests' chats stay on their device only
-        payload = {k: out[k] for k in ("kind", "citations", "verified", "companies")}
+        payload = {k: out.get(k) for k in ("kind", "citations", "verified", "companies", "pending_reports")}
         with cursor() as c:
             tid = req.thread_id
             if tid:

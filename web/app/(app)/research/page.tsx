@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useData } from "@/components/data";
 import { ProfileButton } from "@/components/profile-menu";
+import { NewReports } from "@/components/new-reports";
 
 type Co = { symbol: string; name: string; sector: string | null; market_cap_cr: number | null };
 type Tag = "important" | "volatile" | "promising" | "steady";
@@ -141,6 +142,7 @@ function Index() {
         )
       ) : (
         <>
+          <NewReports />
           {picks.length > 0 && (
             <section>
               <div className="sec rp-h"><span>── Top research picks</span><span>full documents</span></div>

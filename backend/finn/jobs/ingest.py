@@ -68,7 +68,13 @@ def load_company(symbol: str) -> dict:
                 (symbol, a.date, a.title, a.note or None, a.url, key),
             )
             new += len(c.fetchall())
-    return {"symbol": symbol, "new_filings": new, "quarters": len(page.tables.get("quarters").columns)
+    try:                                   # newly published reports -> candidates for auto pickup
+        from finn.pull.autodocs import record
+        new_reports = record(symbol, page)
+    except Exception:
+        new_reports = 0
+    return {"symbol": symbol, "new_filings": new, "new_reports": new_reports,
+            "quarters": len(page.tables.get("quarters").columns)
             if "quarters" in page.tables else 0}
 
 
@@ -105,7 +111,7 @@ def main(symbols: list[str]) -> None:
     for i, sym in enumerate(symbols):
         try:
             r = load_company(sym)
-            print(f"company {sym:12} quarters={r['quarters']:<3} new_filings={r['new_filings']}")
+            print(f"company {sym:12} quarters={r['quarters']:<3} new_filings={r['new_filings']} new_reports={r.get('new_reports', 0)}")
         except Exception as e:
             print(f"company {sym:12} FAILED: {type(e).__name__}: {str(e)[:150]}")
         if i < len(symbols) - 1:
