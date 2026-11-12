@@ -9,6 +9,29 @@ import { devModeAvailable } from "@/lib/devauth";
 const GOOGLE = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
 const RESEND_AFTER = 45; // seconds
 
+/** Supabase's auth errors, in plain words. Unknown errors keep their own text. */
+function friendlyAuthError(e: unknown, step: string, guest: boolean): string {
+  const err = e as { message?: string; status?: number; code?: string };
+  const m = (err.message ?? "").toLowerCase();
+  const stay = guest ? "keep using FINN as a guest" : "continue as a guest";
+  if (err.status === 429 || m.includes("rate limit") || err.code === "over_email_send_rate_limit") {
+    return `Too many code emails right now. Try again in a few minutes, or ${stay}.`;
+  }
+  if (step === "verify" && (m.includes("expired") || m.includes("invalid") || m.includes("token"))) {
+    return "That code is wrong or has expired. Check the latest email, or tap Resend code.";
+  }
+  if (m.includes("email") && (m.includes("invalid") || m.includes("valid email"))) {
+    return "That doesn't look like a valid email address.";
+  }
+  if (m.includes("failed to fetch") || m.includes("network") || m.includes("load failed")) {
+    return "Couldn't reach the sign-in service. Check your connection and try again.";
+  }
+  if (m.includes("signups not allowed") || m.includes("signup is disabled")) {
+    return "New sign-ups are paused right now. You can still continue as a guest.";
+  }
+  return err.message || "Something went wrong. Please try again.";
+}
+
 export default function Login() {
   const { session, ready, signInGuest, sendCode, verifyCode, signInGoogle } = useAuth();
   const router = useRouter();
@@ -41,7 +64,7 @@ export default function Login() {
     try {
       await fn();
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(friendlyAuthError(e, label, guest));
     } finally {
       setBusy(null);
     }

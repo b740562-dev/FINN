@@ -103,6 +103,6 @@ FINN is a mobile-first PWA for an investor holding a portfolio of NSE stocks. It
 
 ## Links
 
-- App: _(Vercel URL)_
+- App: https://finn-lake.vercel.app (try as guest, no sign-up)
 - Repo: https://github.com/b740562-dev/FINN
 - AI build history: _(Claude Code transcript export)_
