@@ -1144,3 +1144,6 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .admin-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; letter-spacing: 0.02em;
   padding: 3px 10px; border-radius: 999px; color: #0a1f26; background: var(--blue); box-shadow: 0 0 12px rgba(127,216,232,0.4); }
 .pm-tag.admin { background: rgba(127,216,232,0.16); color: var(--blue); }
+
+/* Full-screen Surya chat: no room reserved for the tab bar */
+.shell:has(> .surya) { padding-bottom: 0; }
