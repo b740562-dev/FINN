@@ -25,6 +25,22 @@ const TAG: Record<Tag, { label: string; icon: string }> = {
   steady: { label: "Steady", icon: "–" },
 };
 
+/** How much is going on: important news counts most, then a promising set-up, then volatility. */
+const WEIGHT: Record<Tag, number> = { important: 3, promising: 2, volatile: 1, steady: 0 };
+const score = (x: Signal) => x.tags.reduce((n, t) => n + WEIGHT[t], 0);
+
+/** One plain sentence on why a company is worth a look, built from its numbers. */
+function whyLine(x: Signal): string | null {
+  if (x.news) return x.news.headline;
+  if (x.tags.includes("promising")) {
+    return `Profit ${pctTxt(x.pat_yoy)} YoY${x.quarter ? ` in ${x.quarter}` : ""}, with the price ${pctTxt(x.ret_3m)} over 3 months.`;
+  }
+  if (x.tags.includes("volatile") && x.vol_20d !== null) {
+    return `Swinging about ${x.vol_20d.toFixed(0)}% a year over the last 20 days; ${pctTxt(x.ret_1m)} in a month.`;
+  }
+  return null;
+}
+
 function pctTxt(v: number | null) {
   if (v === null || v === undefined) return "–";
   return `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
@@ -39,6 +55,7 @@ function Index() {
   const [sig, setSig] = useState<Signals | null>(null);
   const [filter, setFilter] = useState<Tag | null>(null);
   const [otherSig, setOtherSig] = useState<Signals | null>(null);
+  const [showSteady, setShowSteady] = useState(false);
 
   useEffect(() => {
     api<Co[]>(`/companies?q=${encodeURIComponent(q.length >= 2 ? q : "")}`).then(setAll).catch(() => setAll([]));
@@ -53,13 +70,35 @@ function Index() {
   const picks = list.filter((c) => RESEARCH_SET.includes(c.symbol));
   const others = list.filter((c) => !held.has(c.symbol) && !RESEARCH_SET.includes(c.symbol));
   const holdings = (sig?.items ?? []).filter((x) => !filter || x.tags.includes(filter));
+  const mcap = new Map(list.map((c) => [c.symbol, c.market_cap_cr]));
   const otherKey = others.map((c) => c.symbol).join(",");
   useEffect(() => {
     if (!otherKey || searching) return;
     api<Signals>(`/signals?symbols=${encodeURIComponent(otherKey)}`).then(setOtherSig).catch(() => setOtherSig(null));
   }, [otherKey, searching]);
-  const otherShown = (otherSig?.items ?? []).filter((x) => !filter || x.tags.includes(filter));
-  const mcap = new Map(list.map((c) => [c.symbol, c.market_cap_cr]));
+  const otherShown = (otherSig?.items ?? []).filter((x) => !filter || x.tags.includes(filter))
+    .sort((a, b) => score(b) - score(a) || (mcap.get(b.symbol) ?? 0) - (mcap.get(a.symbol) ?? 0));
+  const featured = otherShown.filter((x) => x.primary !== "steady").slice(0, 3);
+  const rest = otherShown.filter((x) => !featured.includes(x) && x.primary !== "steady");
+  const steady = otherShown.filter((x) => x.primary === "steady");
+
+  const worthCard = (x: Signal, big = false) => (
+    <Link key={x.symbol} href={`/research/${x.symbol}`} className={`wc-card ${x.primary} ${big ? "big" : ""}`}>
+      <div className="wc-top">
+        <span className={`hs-ic ${x.primary}`} aria-hidden>{TAG[x.primary].icon}</span>
+        <span className="wc-who"><b>{x.symbol}</b><small>{x.name}</small></span>
+        <span className="hs-tags">{x.tags.map((t) => <span key={t} className={`hs-tag ${t}`}>{TAG[t].label}</span>)}</span>
+      </div>
+      {whyLine(x) && <p className="wc-why">{whyLine(x)}</p>}
+      <div className="hs-stats">
+        <span><small>3M</small><b className={(x.ret_3m ?? 0) >= 0 ? "up" : "dn"}>{pctTxt(x.ret_3m)}</b></span>
+        <span><small>Volatility</small><b className={(x.vol_20d ?? 0) >= 35 ? "warn" : ""}>{x.vol_20d === null ? "–" : `${x.vol_20d.toFixed(0)}%`}</b></span>
+        <span><small>PAT YoY</small><b className={(x.pat_yoy ?? 0) >= 0 ? "up" : "dn"}>{pctTxt(x.pat_yoy)}</b></span>
+        <span><small>Mcap</small><b>{mcap.get(x.symbol) ? `₹${(mcap.get(x.symbol)! / 100000).toFixed(1)}L cr` : "–"}</b></span>
+      </div>
+      {big && <span className="wc-cta">Open research →</span>}
+    </Link>
+  );
 
   const legend = (s: Signals) => (
     <div className="hs-legend">
@@ -144,29 +183,24 @@ function Index() {
           )}
 
           {others.length > 0 && (
-            <section>
-              <div className="sec"><span>── Other tracked</span><span>{others.length}</span></div>
+            <section className="wc">
+              <div className="wc-head">
+                <div>
+                  <h2>Worth checking</h2>
+                  <p>Beyond your portfolio · ranked by what changed</p>
+                </div>
+                <span className="wc-count">{others.length}<small>tracked</small></span>
+              </div>
               {otherSig ? (
                 <>
                   {legend(otherSig)}
-                  {otherShown.map((x) => (
-                    <Link key={x.symbol} href={`/research/${x.symbol}`} className={`hs-card mini ${x.primary}`}>
-                      <div className="hs-top">
-                        <span className={`hs-ic ${x.primary}`} aria-hidden>{TAG[x.primary].icon}</span>
-                        <span className="hs-who"><b>{x.symbol}</b><small>{x.name}</small></span>
-                        <span className="hs-tags">
-                          {x.tags.map((t) => <span key={t} className={`hs-tag ${t}`}>{TAG[t].label}</span>)}
-                        </span>
-                      </div>
-                      <div className="hs-stats three">
-                        <span><small>3M</small><b className={(x.ret_3m ?? 0) >= 0 ? "up" : "dn"}>{pctTxt(x.ret_3m)}</b></span>
-                        <span><small>Volatility</small><b className={(x.vol_20d ?? 0) >= 35 ? "warn" : ""}>{x.vol_20d === null ? "–" : `${x.vol_20d.toFixed(0)}%`}</b></span>
-                        <span><small>PAT YoY</small><b className={(x.pat_yoy ?? 0) >= 0 ? "up" : "dn"}>{pctTxt(x.pat_yoy)}</b></span>
-                        <span><small>Mcap</small><b>{mcap.get(x.symbol) ? `₹${(mcap.get(x.symbol)! / 100000).toFixed(1)}L cr` : "–"}</b></span>
-                      </div>
-                      {x.news && <div className="hs-news"><i aria-hidden>!</i>{x.news.headline}</div>}
-                    </Link>
-                  ))}
+                  {featured.map((x) => worthCard(x, true))}
+                  {rest.map((x) => worthCard(x))}
+                  {steady.length > 0 && (
+                    showSteady || filter === "steady"
+                      ? steady.map((x) => worthCard(x))
+                      : <button className="wc-more" onClick={() => setShowSteady(true)}>Show {steady.length} steady companies ▾</button>
+                  )}
                 </>
               ) : others.map((c) => row(c))}
             </section>
