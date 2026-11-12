@@ -30,14 +30,19 @@ function fyOptions() {
   return Array.from({ length: 6 }, (_, i) => last - 1 - i);                      // latest complete FY first
 }
 
-/** "Your documents": add an annual report / transcript / presentation for any
- *  company (with where it came from), watch it being read, remove it later. */
-export function MyDocuments({ guest }: { guest: boolean }) {
-  const [mine, setMine] = useState<Mine | null>(null);
-  const [open, setOpen] = useState(false);
+export type Uploaded = { status: string; label?: string; job_id?: number; symbol: string; name: string };
+
+/** The add-a-document form: company, what it is, period, source, PDF. Used in
+ *  You → Your documents and in the Surya chat. */
+export function DocUploadForm({ guest, initial, onCancel, onUploaded }: {
+  guest: boolean;
+  initial?: { symbol: string; name: string } | null;
+  onCancel: () => void;
+  onUploaded: (r: Uploaded) => void;
+}) {
   const [q, setQ] = useState("");
   const [sugg, setSugg] = useState<{ symbol: string; name: string }[]>([]);
-  const [co, setCo] = useState<{ symbol: string; name: string } | null>(null);
+  const [co, setCo] = useState<{ symbol: string; name: string } | null>(initial ?? null);
   const [kind, setKind] = useState("transcript");
   const [fy, setFy] = useState(String(fyOptions()[0]));
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -45,22 +50,8 @@ export function MyDocuments({ guest }: { guest: boolean }) {
   const [link, setLink] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [confirm, setConfirm] = useState<number | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const load = useCallback(async () => {
-    try { setMine(await api<Mine>("/documents/mine")); } catch { setMine({ documents: [], jobs: [] }); }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  // Poll while anything is still being read.
-  const pending = (mine?.jobs ?? []).some((j) => j.status !== "failed");
-  useEffect(() => {
-    if (!pending) return;
-    const t = setInterval(load, 3000);
-    return () => clearInterval(t);
-  }, [pending, load]);
 
   useEffect(() => {
     if (co || q.trim().length < 2) { setSugg([]); return; }
@@ -70,8 +61,8 @@ export function MyDocuments({ guest }: { guest: boolean }) {
   }, [q, co]);
 
   function pickFile(f: File | null) {
-    setMsg(null);
-    if (f && f.size > MAX_MB * 1024 * 1024) { setMsg({ ok: false, text: `That PDF is over ${MAX_MB} MB.` }); return; }
+    setErr(null);
+    if (f && f.size > MAX_MB * 1024 * 1024) { setErr(`That PDF is over ${MAX_MB} MB.`); return; }
     setFile(f);
   }
 
@@ -79,7 +70,7 @@ export function MyDocuments({ guest }: { guest: boolean }) {
     e.preventDefault();
     if (!co || !file) return;
     setBusy(true);
-    setMsg(null);
+    setErr(null);
     const fd = new FormData();
     fd.set("file", file);
     fd.set("kind", kind);
@@ -87,51 +78,19 @@ export function MyDocuments({ guest }: { guest: boolean }) {
     fd.set("source", source);
     if (link.trim()) fd.set("source_url", link.trim());
     try {
-      const r = await api<{ status: string; label?: string }>(`/research/${co.symbol}/documents`, { method: "POST", body: fd });
-      setMsg(r.status === "duplicate"
-        ? { ok: true, text: `Already in FINN's library${r.label ? ` (${co.symbol} ${r.label})` : ""}. Nothing new to read.` }
-        : { ok: true, text: `Reading ${co.symbol}'s document. Its research updates when it's done.` });
+      const r = await api<{ status: string; label?: string; job_id?: number }>(`/research/${co.symbol}/documents`, { method: "POST", body: fd });
       setFile(null); setLink(""); if (fileRef.current) fileRef.current.value = "";
-      await load();
+      onUploaded({ ...r, symbol: co.symbol, name: co.name });
     } catch (er) {
-      setMsg({ ok: false, text: (er as Error).message });
+      setErr((er as Error).message);
     } finally {
       setBusy(false);
     }
   }
 
-  async function remove(id: number) {
-    setConfirm(null);
-    try {
-      await api(`/documents/${id}`, { method: "DELETE" });
-      await load();
-    } catch (er) {
-      setMsg({ ok: false, text: (er as Error).message });
-    }
-  }
-
-  async function dismiss(id: number) {
-    try { await api(`/documents/jobs/${id}`, { method: "DELETE" }); } catch {}
-    load();
-  }
-
-  const docs = mine?.documents ?? [];
-  const jobs = mine?.jobs ?? [];
-  const kindLabel = (k: string) => KINDS.find((x) => x[0] === k)?.[1] ?? k;
-  const kindTag = (k: string) => KINDS.find((x) => x[0] === k)?.[2] ?? "DOC";
   const ready = Boolean(co && file);
 
   return (
-    <div className="md" id="my-docs">
-      <div className="md-head">
-        <div>
-          <b>Your documents</b>
-          <small>{docs.length ? `${docs.length} added` : "Annual reports, concalls, presentations"}</small>
-        </div>
-        {!open && <button className="btn primary sm" onClick={() => setOpen(true)}>＋ Add</button>}
-      </div>
-
-      {open && (
         <form className="md-form" onSubmit={submit}>
           <div className="md-step"><i>1</i><span>Company</span></div>
           {co ? (
@@ -195,15 +154,78 @@ export function MyDocuments({ guest }: { guest: boolean }) {
           </label>
 
           <div className="md-actions">
-            <button type="button" className="btn ghost" onClick={() => { setOpen(false); setMsg(null); }}>Cancel</button>
+            <button type="button" className="btn ghost" onClick={onCancel}>Cancel</button>
             {guest ? (
-              <Link className="btn primary" href="/profile">Save your account to add</Link>
+              <Link className="btn primary" href="/login">Log in to add</Link>
             ) : (
               <button className="btn primary" disabled={!ready || busy}>{busy ? "Uploading…" : "Add document"}</button>
             )}
           </div>
-          {guest && <p className="md-note">Added documents feed the company&apos;s research for everyone, so they need a saved account.</p>}
+          {err && <div className="err" style={{ margin: 0 }}>{err}</div>}
+          {guest && <p className="md-note">Added documents feed the company&apos;s research for everyone, so they need a logged-in account.</p>}
         </form>
+  );
+}
+
+/** "Your documents": add an annual report / transcript / presentation for any
+ *  company (with where it came from), watch it being read, remove it later. */
+export function MyDocuments({ guest }: { guest: boolean }) {
+  const [mine, setMine] = useState<Mine | null>(null);
+  const [open, setOpen] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [confirm, setConfirm] = useState<number | null>(null);
+
+  const load = useCallback(async () => {
+    try { setMine(await api<Mine>("/documents/mine")); } catch { setMine({ documents: [], jobs: [] }); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  // Poll while anything is still being read.
+  const pending = (mine?.jobs ?? []).some((j) => j.status !== "failed");
+  useEffect(() => {
+    if (!pending) return;
+    const t = setInterval(load, 3000);
+    return () => clearInterval(t);
+  }, [pending, load]);
+
+  async function remove(id: number) {
+    setConfirm(null);
+    try {
+      await api(`/documents/${id}`, { method: "DELETE" });
+      await load();
+    } catch (er) {
+      setMsg({ ok: false, text: (er as Error).message });
+    }
+  }
+
+  async function dismiss(id: number) {
+    try { await api(`/documents/jobs/${id}`, { method: "DELETE" }); } catch {}
+    load();
+  }
+
+  const docs = mine?.documents ?? [];
+  const jobs = mine?.jobs ?? [];
+  const kindLabel = (k: string) => KINDS.find((x) => x[0] === k)?.[1] ?? k;
+  const kindTag = (k: string) => KINDS.find((x) => x[0] === k)?.[2] ?? "DOC";
+
+  return (
+    <div className="md" id="my-docs">
+      <div className="md-head">
+        <div>
+          <b>Your documents</b>
+          <small>{docs.length ? `${docs.length} added` : "Annual reports, concalls, presentations"}</small>
+        </div>
+        {!open && <button className="btn primary sm" onClick={() => setOpen(true)}>＋ Add</button>}
+      </div>
+
+      {open && (
+        <DocUploadForm guest={guest} onCancel={() => { setOpen(false); setMsg(null); }}
+          onUploaded={(r) => {
+            setMsg(r.status === "duplicate"
+              ? { ok: true, text: `Already in FINN's library${r.label ? ` (${r.symbol} ${r.label})` : ""}. Nothing new to read.` }
+              : { ok: true, text: `Reading ${r.symbol}'s document. Its research updates when it's done.` });
+            load();
+          }} />
       )}
 
       {msg && <div className={msg.ok ? "ok" : "err"} style={{ margin: "8px 0 0" }}>{msg.text}</div>}

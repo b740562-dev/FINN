@@ -122,3 +122,13 @@ We only use sources that serve a plainly identified client. We don't imitate bro
 
 ## 9. Still open
 - [ ] API keys needed: Gemini, Supabase, Tavily (or Brave), Google OAuth client ID (Google Cloud console), VAPID keys for web push (generated locally)
+
+
+## Surya chat and email OTP (12 Nov)
+- **Surya** is the conversational layer. The rule the user set ("general advice is fine, data only from verified documents") is enforced in code, not just in the prompt:
+  - companies are detected deterministically (symbol / name / unique first word; "Adani Green" is not mistaken for Adani Enterprises);
+  - retrieval is topic-focused (company name and question words stripped, latest concall when asked, exchange cover letters filtered out);
+  - verified material = the company's documents, its exchange-reported financials, and the Promise vs Delivered tracker;
+  - every c# quote must occur in its chunk, unknown markers are stripped, and every number in a company answer must appear in the cited material (PDF number spacing normalised first). If not, the answer is replaced by "I don't have that in a verified document yet, add the matching report".
+- **Email log-in is a one-time code**, not a magic link. A guest who logs in attaches the email to their own account (`updateUser` + `verifyOtp(type=email_change)`), so portfolio and settings carry over; if the email already has an account, they sign in to that one. Supabase's email templates must include `{{ .Token }}`.
+- Guests show a generic person avatar and the name "Guest", with **Log in** above the date on Today and next to Edit profile on You.

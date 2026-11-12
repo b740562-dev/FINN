@@ -110,7 +110,7 @@ export function AskBar() {
     rec.start();
   }
 
-  const placeholder = onResearch ? "Ask a follow-up about this company…" : "Ask FINN: “Did Titan hit FY27 guidance?”";
+  const placeholder = onResearch ? "Follow-up on this company…" : "Search a company…";
 
   return (
     <>
@@ -126,6 +126,13 @@ export function AskBar() {
         </div>
       )}
       <form className="ask" onSubmit={(e) => { e.preventDefault(); submit(q); }}>
+        <button type="button" className="surya-pill" onClick={() => router.push("/surya")} aria-label="Ask Surya, your investment guide">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
+          </svg>
+          Ask Surya
+        </button>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}

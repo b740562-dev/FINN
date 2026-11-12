@@ -199,7 +199,7 @@ function Dossier() {
           ))}
           {isGuest ? (
             <p className="needs" style={{ marginTop: 8 }}>
-              🔒 Uploads need a saved account. <Link className="amber" href="/profile">Save your account →</Link>
+              🔒 Uploads need a logged-in account. <Link className="amber" href="/login">Log in →</Link>
             </p>
           ) : (
           <form onSubmit={onUpload} style={{ display: "grid", gap: 8, marginTop: 8 }}>

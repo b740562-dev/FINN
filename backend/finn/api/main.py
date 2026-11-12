@@ -45,6 +45,10 @@ app.include_router(research_router)
 app.include_router(usage_router)
 app.include_router(docs_router)
 
+from finn.api.chat import router as chat_router  # noqa: E402
+
+app.include_router(chat_router)
+
 
 def _j(v):
     return v if not isinstance(v, str) else json.loads(v)

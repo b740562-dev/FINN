@@ -138,8 +138,8 @@ async def upload(symbol: str, background: BackgroundTasks, file: UploadFile = Fi
     every user, so guests can't add them (one bad upload would change everyone's
     research); the demo set is pre-loaded."""
     if user.is_anonymous:
-        raise HTTPException(403, "Guests can read every pre-loaded document. To add documents, save your account "
-                                 "with an email (You → Edit profile).")
+        raise HTTPException(403, "Guests can read every pre-loaded document. To add documents, log in with your "
+                                 "email (a one-time code keeps this portfolio).")
     sym = _sym(symbol)
     _require(sym)
     if kind not in DOC_KINDS:

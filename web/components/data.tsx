@@ -79,13 +79,43 @@ export function profileCompleteness(p: Partial<Profile> | null, email: string | 
   return Math.round((filled / (COMPLETENESS_FIELDS.length + 1)) * 100);
 }
 
-/** Name shown until the user sets their own (guest / demo accounts). */
-export const DEFAULT_NAME = "Surya";
+/** Name shown for a guest who hasn't set their own. */
+export const DEFAULT_NAME = "Guest";
 
-/** Initials for an avatar: "Asha Rao" -> "AR", email -> "A", guest -> "S" (Surya). */
+/** Initials for an avatar: "Asha Rao" -> "AR", email -> "A". */
 export function initialsOf(profile: Profile | null, email: string | null | undefined, guest: boolean): string {
   const name = profile?.full_name?.trim();
   if (name) return name.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
   if (email && !guest) return email[0].toUpperCase();
-  return DEFAULT_NAME[0];
+  return "G";
+}
+
+/** Avatar contents: the generic person silhouette for guests, initials otherwise. */
+export function Face({ profile, email, guest }: { profile: Profile | null; email: string | null | undefined; guest: boolean }) {
+  if (guest) {
+    return (
+      <svg className="face-guest" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
+        strokeLinecap="round" aria-label="Guest">
+        <circle cx="12" cy="8.5" r="4" />
+        <path d="M4.5 20.5c0-4.1 3.4-6.5 7.5-6.5s7.5 2.4 7.5 6.5" />
+      </svg>
+    );
+  }
+  return <>{initialsOf(profile, email, guest)}</>;
+}
+
+type AuthUser = { is_anonymous?: boolean; email?: string | null; email_confirmed_at?: string | null } | undefined;
+
+/** A real account whose email was confirmed with the one-time code. */
+export function isVerified(u: AuthUser): boolean {
+  return Boolean(u && !u.is_anonymous && u.email && u.email_confirmed_at);
+}
+
+export function VerifiedTick({ size = 15 }: { size?: number }) {
+  return (
+    <span className="vtick" title="Email verified" aria-label="Email verified" style={{ width: size, height: size }}>
+      <svg viewBox="0 0 24 24" width={size * 0.62} height={size * 0.62} fill="none" stroke="currentColor"
+        strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+    </span>
+  );
 }

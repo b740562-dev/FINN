@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth";
 import { DataProvider } from "@/components/data";
 import { AskBar } from "@/components/ask-bar";
@@ -10,6 +10,8 @@ import { Tabs } from "@/components/tabs";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { session, ready } = useAuth();
   const router = useRouter();
+  const path = usePathname() || "/";
+  const fullScreen = path.startsWith("/surya");   // the chat window has its own composer
 
   useEffect(() => {
     if (ready && !session) router.replace("/login");
@@ -27,9 +29,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <DataProvider>
-      <div className="shell">{children}</div>
-      <AskBar />
-      <Tabs />
+      <div className={`shell ${fullScreen ? "full" : ""}`}>{children}</div>
+      {!fullScreen && <AskBar />}
+      {!fullScreen && <Tabs />}
     </DataProvider>
   );
 }

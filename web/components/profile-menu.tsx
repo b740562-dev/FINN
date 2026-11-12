@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { put } from "@/lib/api";
 import { inr } from "@/lib/format";
 import { useAuth } from "./auth";
-import { DEFAULT_NAME, initialsOf, profileCompleteness, useData } from "./data";
+import { DEFAULT_NAME, Face, isVerified, profileCompleteness, useData, VerifiedTick } from "./data";
 import { Ring } from "./ring";
 
 /** Top-right avatar on every screen: who you are, a glance at the account,
@@ -19,10 +19,11 @@ export function ProfileButton() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const user = session?.user as { email?: string | null; is_anonymous?: boolean; created_at?: string } | undefined;
+  const user = session?.user as { email?: string | null; is_anonymous?: boolean; created_at?: string; email_confirmed_at?: string | null } | undefined;
   const guest = Boolean(user?.is_anonymous);
   const email = user?.email || null;
-  const initial = initialsOf(profile, email, guest);
+  const face = <Face profile={profile} email={email} guest={guest} />;
+  const verified = isVerified(user);
   const displayName = profile?.full_name || (guest ? DEFAULT_NAME : email ?? "Signed in");
   const workLine = [profile?.work_role, profile?.work_company].filter(Boolean).join(" · ");
   const since = user?.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : null;
@@ -60,8 +61,8 @@ export function ProfileButton() {
 
   return (
     <>
-      <button className={`avatar-btn ${open ? "on" : ""}`} onClick={() => setOpen(!open)} aria-label="Profile and settings" aria-expanded={open}>
-        {initial}
+      <button className={`avatar-btn ${open ? "on" : ""} ${guest ? "guest" : ""}`} onClick={() => setOpen(!open)} aria-label="Profile and settings" aria-expanded={open}>
+        {face}
         {unread > 0 && <i className="dotbadge" />}
       </button>
 
@@ -70,9 +71,9 @@ export function ProfileButton() {
           <div className="pm-backdrop" onClick={() => setOpen(false)} />
           <div className="pm-panel" role="menu">
             <div className="pm-head">
-              <div className="pm-av">{initial}</div>
+              <div className={`pm-av ${guest ? "guest" : ""}`}>{face}</div>
               <div style={{ minWidth: 0 }}>
-                <div className="pm-name">{displayName}</div>
+                <div className="pm-name">{displayName}{verified && <VerifiedTick />}</div>
                 {workLine && <div className="pm-work">{workLine}</div>}
                 <div className="pm-sub">
                   <span className={`pm-tag ${guest ? "guest" : ""}`}>{guest ? "Guest" : "Account"}</span>
@@ -92,8 +93,8 @@ export function ProfileButton() {
             </div>
 
             {guest && (
-              <button className="pm-cta" onClick={() => go("/profile")}>
-                <span>☁</span><div><b>Save your account</b><small>Keep this portfolio across devices</small></div>
+              <button className="pm-cta" onClick={() => go("/login")}>
+                <span>→</span><div><b>Log in</b><small>Verify your email with a code · keeps this portfolio</small></div>
               </button>
             )}
 

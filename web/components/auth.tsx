@@ -9,11 +9,16 @@ type AuthCtx = {
   session: Session | null;
   ready: boolean;
   signInGuest: () => Promise<void>;
-  signInEmail: (email: string) => Promise<void>;
+  /** Email a one-time code. Returns which verification the code is for. */
+  sendCode: (email: string) => Promise<OtpKind>;
+  verifyCode: (email: string, code: string, kind: OtpKind) => Promise<void>;
   signInGoogle: () => Promise<void>;
-  saveAccountEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
+
+/** "email": sign in (or sign up) with a code. "email_change": a guest attaching
+ *  an email to their own account, which keeps their portfolio and settings. */
+export type OtpKind = "email" | "email_change";
 
 const Ctx = createContext<AuthCtx | null>(null);
 
@@ -55,12 +60,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   }, []);
 
-  const signInEmail = useCallback(async (email: string) => {
-    const { error } = await supabase().auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
+  const sendCode = useCallback(async (email: string): Promise<OtpKind> => {
+    if (devModeAvailable()) {
+      throw new Error("Email log-in runs on the live app. Local demo mode doesn't reach Supabase.");
+    }
+    const sb = supabase();
+    const { data } = await sb.auth.getSession();
+    if (data.session?.user.is_anonymous) {
+      // Guest: attach the email to this account, so the portfolio comes along.
+      const { error } = await sb.auth.updateUser({ email });
+      if (!error) return "email_change";
+      if (!/already|registered|exists/i.test(error.message)) throw error;
+      // The email already has an account: sign in to that one instead.
+    }
+    const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
     if (error) throw error;
+    return "email";
+  }, []);
+
+  const verifyCode = useCallback(async (email: string, code: string, kind: OtpKind) => {
+    const sb = supabase();
+    const { error } = await sb.auth.verifyOtp({ email, token: code.trim(), type: kind });
+    if (error) throw error;
+    if (kind === "email_change") await sb.auth.refreshSession();   // pick up the verified email
   }, []);
 
   const signInGoogle = useCallback(async () => {
@@ -68,13 +90,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       provider: "google",
       options: { redirectTo: window.location.origin },
     });
-    if (error) throw error;
-  }, []);
-
-  // Guest -> permanent account without losing settings: attach an email to the
-  // anonymous user (Supabase sends a confirmation link).
-  const saveAccountEmail = useCallback(async (email: string) => {
-    const { error } = await supabase().auth.updateUser({ email });
     if (error) throw error;
   }, []);
 
@@ -89,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ session, ready, signInGuest, signInEmail, signInGoogle, saveAccountEmail, signOut }}>
+    <Ctx.Provider value={{ session, ready, signInGuest, sendCode, verifyCode, signInGoogle, signOut }}>
       {children}
     </Ctx.Provider>
   );

@@ -1,28 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth";
+import { type OtpKind, useAuth } from "@/components/auth";
 import { devModeAvailable } from "@/lib/devauth";
 
 const GOOGLE = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
+const RESEND_AFTER = 45; // seconds
 
 export default function Login() {
-  const { session, ready, signInGuest, signInEmail, signInGoogle } = useAuth();
+  const { session, ready, signInGuest, sendCode, verifyCode, signInGoogle } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [code, setCode] = useState("");
+  const [kind, setKind] = useState<OtpKind | null>(null);   // set once a code has been sent
+  const [wait, setWait] = useState(0);
   const [err, setErr] = useState<string | null>(null);
   const [devMode, setDevMode] = useState(false);
+  const codeRef = useRef<HTMLInputElement>(null);
+
+  const guest = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous);
 
   useEffect(() => setDevMode(devModeAvailable()), []);
+  // A real (non-guest) session has nothing to do here. Guests come here to log in.
   useEffect(() => {
-    if (ready && session) router.replace("/");
-  }, [ready, session, router]);
+    if (ready && session && !guest) router.replace("/");
+  }, [ready, session, guest, router]);
+  useEffect(() => {
+    if (!wait) return;
+    const t = setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => clearTimeout(t);
+  }, [wait]);
+  useEffect(() => { if (kind) codeRef.current?.focus(); }, [kind]);
 
-  async function run(kind: string, fn: () => Promise<void>) {
-    setBusy(kind);
+  async function run(label: string, fn: () => Promise<void>) {
+    setBusy(label);
     setErr(null);
     try {
       await fn();
@@ -33,44 +47,78 @@ export default function Login() {
     }
   }
 
+  const send = () => run("send", async () => {
+    setKind(await sendCode(email.trim()));
+    setCode("");
+    setWait(RESEND_AFTER);
+  });
+
+  const verify = () => run("verify", async () => {
+    if (!kind) return;
+    await verifyCode(email.trim(), code, kind);
+    router.replace("/");
+  });
+
   return (
     <main className="login">
+      {guest && <Link href="/" className="lg-back">‹ Back</Link>}
       <span className="logo">FINN<b className="amber">.</b></span>
-      <h1>Your portfolio,<br />filtered.</h1>
-      <div className="feat">
-        <div><b>◎</b><span>What matters</span></div>
-        <div><b>⚡</b><span>Your alerts</span></div>
-        <div><b>❝</b><span>Cited research</span></div>
-      </div>
+      <h1>{guest ? <>Log in.<br />Keep your portfolio.</> : <>Your portfolio,<br />filtered.</>}</h1>
+      {!guest && (
+        <div className="feat">
+          <div><b>◎</b><span>What matters</span></div>
+          <div><b>⚡</b><span>Your alerts</span></div>
+          <div><b>❝</b><span>Cited research</span></div>
+        </div>
+      )}
 
       <div className="actions">
-        <div className="or" style={{ marginTop: 0 }}>SIGN IN</div>
-        {GOOGLE && (
+        <div className="or" style={{ marginTop: 0 }}>{kind ? "ENTER THE CODE" : "LOG IN WITH EMAIL"}</div>
+        {GOOGLE && !kind && (
           <button className="btn block" disabled={!!busy} onClick={() => run("google", signInGoogle)}>
             Continue with Google
           </button>
         )}
-        {sent ? (
-          <div className="ok">Check {email} for a sign-in link.</div>
+
+        {!kind ? (
+          <form onSubmit={(e) => { e.preventDefault(); if (email) send(); }} style={{ display: "grid", gap: 8 }}>
+            <input className="txt" type="email" placeholder="you@example.com" value={email}
+              onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+            <button className="btn primary block" disabled={!!busy || !email}>
+              {busy === "send" ? "Sending code…" : "Send me a code"}
+            </button>
+            {guest && <div className="note" style={{ margin: 0 }}>Your guest portfolio, alerts and settings come with you.</div>}
+          </form>
         ) : (
-          <form
-            onSubmit={(e) => { e.preventDefault(); if (email) run("email", async () => { await signInEmail(email); setSent(true); }); }}
-            style={{ display: "grid", gap: 8 }}
-          >
-            <input className="txt" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-            <button className="btn block" disabled={!!busy || !email}>{busy === "email" ? "SENDING…" : "EMAIL ME A SIGN-IN LINK"}</button>
+          <form onSubmit={(e) => { e.preventDefault(); if (code.length >= 6) verify(); }} style={{ display: "grid", gap: 8 }}>
+            <div className="lg-sent">We sent a code to <b>{email}</b></div>
+            <input ref={codeRef} className="txt otp" inputMode="numeric" autoComplete="one-time-code" maxLength={10}
+              placeholder="••••••" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              aria-label="One-time code" />
+            <button className="btn primary block" disabled={!!busy || code.length < 6}>
+              {busy === "verify" ? "Verifying…" : "Verify and log in"}
+            </button>
+            <div className="lg-row">
+              <button type="button" className="link" onClick={() => { setKind(null); setCode(""); setErr(null); }}>Change email</button>
+              <button type="button" className="link" disabled={wait > 0 || !!busy} onClick={send}>
+                {wait > 0 ? `Resend in ${wait}s` : "Resend code"}
+              </button>
+            </div>
           </form>
         )}
 
-        <div className="or">OR</div>
-        <button className="btn primary block" disabled={!!busy} onClick={() => run("guest", signInGuest)}>
-          {busy === "guest" ? "SETTING UP YOUR DEMO PORTFOLIO…" : "TRY AS GUEST →"}
-        </button>
-        <div className="note" style={{ marginTop: 0 }}>7-stock demo portfolio · no sign-up</div>
-        {err && <div className="err" style={{ margin: 0 }}>{err}</div>}
-        {devMode && (
-          <div className="flag" style={{ textAlign: "center" }}>Local demo mode</div>
+        {!guest && (
+          <>
+            <div className="or">OR</div>
+            <button className="btn block" disabled={!!busy}
+              onClick={() => run("guest", async () => { await signInGuest(); router.replace("/"); })}>
+              {busy === "guest" ? "Setting up your demo portfolio…" : "Try as guest →"}
+            </button>
+            <div className="note" style={{ marginTop: 0 }}>7-stock demo portfolio · no sign-up</div>
+          </>
         )}
+        {err && <div className="err" style={{ margin: 0 }}>{err}</div>}
+        {devMode && <div className="flag" style={{ textAlign: "center" }}>Local demo mode</div>}
         <div className="note">EOD data · NSE/BSE filings · not investment advice</div>
       </div>
     </main>

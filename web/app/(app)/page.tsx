@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import type { Digest } from "@/lib/types";
 import { inr, pct, tone } from "@/lib/format";
 import { useData } from "@/components/data";
+import { useAuth } from "@/components/auth";
 import { RoutineList } from "@/components/cards";
 import { NewsRow, StoryRail, useNewsSheet } from "@/components/news";
 import { BriefButton, briefScript } from "@/components/brief";
@@ -20,6 +21,8 @@ const WINDOWS = [
 
 export default function Today() {
   const { me, meError, bootstrapped } = useData();
+  const { session } = useAuth();
+  const guest = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous);
   const [win, setWin] = useState<(typeof WINDOWS)[number]["key"]>("24h");
   const [asOf, setAsOf] = useState<string>("");
   const [digest, setDigest] = useState<Digest | null>(null);
@@ -66,7 +69,10 @@ export default function Today() {
         <ProfileButton />
         <div className="brand">
           <span className="logo">FINN<b>.</b></span>
-          <span className="when">{dateLabel}{asOf ? " · replay" : " · EOD"}</span>
+          <span className="when-col">
+            {guest && <Link href="/login" className="login-pill">Log in</Link>}
+            <span className="when">{dateLabel}{asOf ? " · replay" : " · EOD"}</span>
+          </span>
         </div>
         <div className="seg">
           {WINDOWS.map((w) => (

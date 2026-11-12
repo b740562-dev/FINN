@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { put } from "@/lib/api";
 import type { Profile } from "@/lib/types";
 import { useAuth } from "@/components/auth";
-import { DEFAULT_NAME, initialsOf, profileCompleteness, useData } from "@/components/data";
+import { DEFAULT_NAME, Face, isVerified, profileCompleteness, useData, VerifiedTick } from "@/components/data";
 import { Ring } from "@/components/ring";
 import { ProfileButton } from "@/components/profile-menu";
 
@@ -17,13 +17,13 @@ type Form = Omit<Profile, "email" | "is_anonymous" | "created_at" | "updated_at"
 const EMPTY: Form = { full_name: "", gender: null, work_company: "", work_role: "", education: "", city: "", experience: null, bio: "" };
 
 export default function EditProfile() {
-  const { session, saveAccountEmail } = useAuth();
+  const { session } = useAuth();
   const { profile, setProfile } = useData();
   const router = useRouter();
   const user = session?.user as { email?: string | null; is_anonymous?: boolean } | undefined;
   const guest = Boolean(user?.is_anonymous);
   const [f, setF] = useState<Form>(EMPTY);
-  const [email, setEmail] = useState(user?.email ?? "");
+  const email = user?.email ?? "";
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -45,15 +45,7 @@ export default function EditProfile() {
       const body = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v === "" ? null : v]));
       const p = await put<Profile>("/profile", body);
       setProfile(p);
-      let text = "Profile saved.";
-      if (email && email !== (user?.email ?? "")) {
-        try {
-          await saveAccountEmail(email);
-          text += ` Check ${email} to confirm your email.`;
-        } catch (er) {
-          text += ` Email not updated: ${(er as Error).message}`;
-        }
-      }
+      const text = "Profile saved.";
       setMsg({ ok: true, text });
     } catch (er) {
       setMsg({ ok: false, text: (er as Error).message });
@@ -62,7 +54,7 @@ export default function EditProfile() {
     }
   }
 
-  const initials = initialsOf({ ...(profile as Profile), full_name: f.full_name } as Profile, email, guest);
+  const verified = isVerified(session?.user as Parameters<typeof isVerified>[0]);
 
   return (
     <>
@@ -75,9 +67,9 @@ export default function EditProfile() {
 
       <form onSubmit={save} className="pf">
         <div className="pf-hero">
-          <div className="pf-av">{initials}</div>
+          <div className={`pf-av ${guest ? "guest" : ""}`}><Face profile={{ ...(profile as Profile), full_name: f.full_name } as Profile} email={email} guest={guest} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="pf-name">{f.full_name || (guest ? DEFAULT_NAME : email || "Your name")}</div>
+            <div className="pf-name">{f.full_name || (guest ? DEFAULT_NAME : email || "Your name")}{verified && <VerifiedTick size={16} />}</div>
             <div className="pf-sub">{[f.work_role, f.work_company].filter(Boolean).join(" · ") || "Add your work below"}</div>
           </div>
           <Ring pct={profileCompleteness(f, email)} size={50} stroke={4.5} />
@@ -91,8 +83,12 @@ export default function EditProfile() {
             <div className="chips">{GENDERS.map(([v, l]) => (
               <button type="button" key={v} className={`chip ${f.gender === v ? "on" : ""}`} onClick={() => set("gender", f.gender === v ? null : v)}>{l}</button>
             ))}</div></div>
-          <label className="pf-f"><span>Email {guest && <em className="pf-hint">· saves your guest account</em>}</span>
-            <input className="txt" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" /></label>
+          <div className="pf-f"><span>Email</span>
+            {guest || !email ? (
+              <Link href="/login" className="pf-email login">Log in with email <em>· one-time code, keeps this portfolio</em></Link>
+            ) : (
+              <div className="pf-email">{email}{verified ? <VerifiedTick size={16} /> : <em>· not verified</em>}</div>
+            )}</div>
           <label className="pf-f"><span>City</span>
             <input className="txt" value={f.city ?? ""} onChange={(e) => set("city", e.target.value)} placeholder="Mumbai" maxLength={60} autoComplete="address-level2" /></label>
         </section>

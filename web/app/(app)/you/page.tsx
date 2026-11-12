@@ -6,7 +6,7 @@ import { api, put } from "@/lib/api";
 import type { Holding, Rules } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { useAuth } from "@/components/auth";
-import { DEFAULT_NAME, initialsOf, profileCompleteness, useData } from "@/components/data";
+import { DEFAULT_NAME, Face, isVerified, profileCompleteness, useData, VerifiedTick } from "@/components/data";
 import { Ring } from "@/components/ring";
 import { MyDocuments } from "@/components/my-docs";
 import { UsagePanel } from "@/components/usage";
@@ -109,17 +109,23 @@ export default function You() {
 
       <section className="yc">
         <div className="yc-top">
-          <div className="yc-av">{initialsOf(profile, email, isGuest)}</div>
+          <div className={`yc-av ${isGuest ? "guest" : ""}`}><Face profile={profile} email={email} guest={isGuest} /></div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="yc-name">{profile?.full_name || (isGuest ? DEFAULT_NAME : email || "Your profile")}</div>
+            <div className="yc-name">
+              <span>{profile?.full_name || (isGuest ? DEFAULT_NAME : email || "Your profile")}</span>
+              {isVerified(session?.user as Parameters<typeof isVerified>[0]) && <VerifiedTick size={17} />}
+            </div>
             {workLine && <div className="yc-work">{workLine}</div>}
-            <Link href="/profile" className="yc-edit">Edit profile <span aria-hidden>▸</span></Link>
+            <div className="yc-acts">
+              {isGuest && <Link href="/login" className="yc-login">Log in</Link>}
+              <Link href="/profile" className="yc-edit">Edit profile <span aria-hidden>▸</span></Link>
+            </div>
           </div>
           <Ring pct={pctDone} size={44} stroke={4} />
         </div>
-        <Link href="/profile" className="yc-band">
-          <span className="yc-badge">{isGuest ? "☁" : pctDone >= 100 ? "✓" : "★"}</span>
-          <span className="yc-bt">{isGuest ? "Save your account" : pctDone >= 100 ? "Profile complete" : "Complete your profile"}</span>
+        <Link href={isGuest ? "/login" : "/profile"} className="yc-band">
+          <span className="yc-badge">{isGuest ? "→" : pctDone >= 100 ? "✓" : "★"}</span>
+          <span className="yc-bt">{isGuest ? "Log in to keep this portfolio" : pctDone >= 100 ? "Profile complete" : "Complete your profile"}</span>
           <span className="yc-chev" aria-hidden>›</span>
         </Link>
       </section>
