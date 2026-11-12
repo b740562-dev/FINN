@@ -11,6 +11,10 @@ export function AskBar() {
         <defs><path id="orb-path" d="M33,33 m-27,0 a27,27 0 1,1 54,0 a27,27 0 1,1 -54,0" /></defs>
         <text><textPath href="#orb-path" textLength="168" lengthAdjust="spacing">ASK ME · ASK ME · ASK ME ·</textPath></text>
       </svg>
+      <span className="orb-tip" role="tooltip">
+        <b>Ask your most difficult investment question</b>
+        <small>Answers grounded in verified company documents</small>
+      </span>
       <span className="orb-core">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
           <circle cx="12" cy="12" r="4.2" />

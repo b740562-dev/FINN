@@ -915,3 +915,13 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .qa-ask { display: flex; gap: 8px; margin-top: 10px; }
 .qa-ask .txt { flex: 1; }
 .qa-ask .btn { padding: 0 16px; font-size: 16px; }
+.surya-orb .orb-tip { position: absolute; left: calc(100% + 12px); top: 50%; transform: translate(-6px, -50%);
+  width: max-content; max-width: 230px; padding: 9px 12px; border-radius: 12px; text-align: left; pointer-events: none;
+  background: rgba(13,34,25,0.97); border: 1px solid rgba(255,214,107,0.4); box-shadow: 0 10px 28px rgba(0,0,0,0.5);
+  opacity: 0; visibility: hidden; transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s; }
+.surya-orb .orb-tip::before { content: ""; position: absolute; left: -6px; top: 50%; width: 10px; height: 10px;
+  transform: translateY(-50%) rotate(45deg); background: inherit; border-left: 1px solid rgba(255,214,107,0.4);
+  border-bottom: 1px solid rgba(255,214,107,0.4); }
+.surya-orb .orb-tip b { display: block; font-size: 12.5px; font-weight: 800; color: var(--ink); line-height: 1.35; }
+.surya-orb .orb-tip small { display: block; margin-top: 3px; font-size: 10.5px; color: #ffd66b; }
+.surya-orb:hover .orb-tip, .surya-orb:focus-visible .orb-tip { opacity: 1; visibility: visible; transform: translate(0, -50%); }
