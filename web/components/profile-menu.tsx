@@ -76,7 +76,7 @@ export function ProfileButton() {
                 <div className="pm-name">{displayName}{verified && <VerifiedTick />}</div>
                 {workLine && <div className="pm-work">{workLine}</div>}
                 <div className="pm-sub">
-                  <span className={`pm-tag ${guest ? "guest" : ""}`}>{guest ? "Guest" : "Account"}</span>
+                  <span className={`pm-tag ${guest ? "guest" : me?.user.is_admin ? "admin" : ""}`}>{guest ? "Guest" : me?.user.is_admin ? "Admin" : "Account"}</span>
                   {since && <span>since {since}</span>}
                 </div>
               </div>

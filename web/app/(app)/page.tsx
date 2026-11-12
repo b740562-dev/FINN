@@ -70,7 +70,16 @@ export default function Today() {
         <div className="brand">
           <span className="logo">FINN<b>.</b></span>
           <span className="when-col">
-            {guest && <Link href="/login" className="login-pill">Log in</Link>}
+            {guest ? (
+              <Link href="/login" className="login-pill">Log in</Link>
+            ) : me?.user.is_admin ? (
+              <Link href="/you#usage" className="admin-pill" title="You're signed in as an admin: open How FINN thinks">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 3l7 3v6c0 4.2-3 7.6-7 9-4-1.4-7-4.8-7-9V6z" /><path d="m9 12 2 2 4-4" />
+                </svg>
+                Admin
+              </Link>
+            ) : null}
             <span className="when">{dateLabel}{asOf ? " · replay" : " · EOD"}</span>
           </span>
         </div>
