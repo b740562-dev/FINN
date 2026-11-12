@@ -19,6 +19,22 @@ A mobile-first agent for an investor running a portfolio of NSE stocks. It does 
 | **Ask Surya** | The round "Ask me" button (bottom left, on every screen) opens a full-screen chat ("Hello, I’m Surya, your investment guide…"). General guidance (debt, diversification, rebalancing) is free-form; **anything about a specific company's data comes only from verified material**: its own documents in FINN (annual reports, concalls, presentations, user uploads), its exchange-reported financials, and the Promise vs Delivered tracker. Every such claim is cited inline and its numbers are checked against the cited text; otherwise Surya says it doesn't have it and offers 📎 to add the matching report, which it reads in the background. |
 | **You** | Define "unusual" (sliders, filing categories). Edit holdings and profile. **Log in with a 6-digit email code** (OTP); a guest's portfolio comes along, and verified accounts show a ✓ next to the name. **"How FINN thinks"** cost & routing meter, **admin-only** (`ADMIN_EMAILS`; the API returns 403 and strips model names for everyone else). |
 
+## Admins vs everyone else
+
+FINN's internals are shown **only to admins**: which model answered, token counts and cost, and the cache hit rate. Normal users and guests see the product, never the plumbing.
+
+| | Admin | Logged-in user | Guest |
+|---|---|---|---|
+| **"How FINN thinks"** (cost & routing meter, You page and profile menu) | ✅ shown | ❌ hidden | ❌ hidden |
+| Top right of Today | **🛡 Admin** badge (opens How FINN thinks) | nothing | **Log in** |
+| Profile menu tag | Admin | Account | Guest |
+| Model names on research and Surya answers | shown | removed by the API | removed by the API |
+| `/usage` API | allowed | **403** | **403** |
+
+- **Who is an admin:** anyone whose email is listed in the API's `ADMIN_EMAILS` setting (comma-separated, e.g. `you@example.com, teammate@example.com`), **after logging in with that email via the 6-digit code**. A guest or an unverified account is never an admin.
+- **Enforced on the server:** the API decides, so changing the app can't reveal internals. `/usage` refuses non-admins, and model names are stripped from responses before they leave the server.
+- **To add or remove an admin:** edit `ADMIN_EMAILS` on Render and save. It applies after the automatic redeploy, in about a minute.
+
 ## Architecture
 
 ```

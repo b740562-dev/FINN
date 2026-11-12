@@ -40,7 +40,7 @@ FINN is a mobile-first PWA for an investor holding a portfolio of NSE stocks. It
    - The rest go in batches of 15 to `gemini-3.5-flash-lite`, which also transcribes voice questions.
    - Only promise-vs-delivered, bull/bear and Surya's answers use the stronger `gemini-3.6-flash`. I planned on 3.8-flash, but it was timing out on my key, so it's a one-variable switch with automatic fallback when a model is overloaded.
    - Every call is priced at Google's published rates. **Everything built so far would cost $1.04 at paid rates:** 208 filings classified, 8 executive bios, research for 36 companies, 33 documents indexed, and 50 Surya replies (19 of them repeats served from the cache). The actual bill is ₹0 on the free tier.
-   - Every response is cached in Postgres and logged. A scheduler run with nothing new costs zero calls. The cost and routing meter is **admin-only**: the API returns 403 and strips model names for everyone else.
+   - Every response is cached in Postgres and logged. A scheduler run with nothing new costs zero calls. The cost and routing meter, **"How FINN thinks"**, is **admin-only**. Accounts listed in `ADMIN_EMAILS` that log in with that email see it, along with an Admin badge at the top right of Today. Normal users and guests never see it: the API returns 403 for them and strips model names from every answer.
 2. **The model extracts; code judges.**
    - Materiality is computed from extracted facts sized against the company: order % of TTM revenue, raise % of market cap, rating direction, executive seniority.
    - The ranking is therefore deterministic and explainable. Each item's "why" is the actual computation.
