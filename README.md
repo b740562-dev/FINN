@@ -38,7 +38,7 @@ Next.js PWA (Vercel) ──Bearer JWT──▶ FastAPI (Render) ──▶ Supaba
 
 ## Judgment calls (the short version)
 
-1. **Rules before models.** BSE subject lines are standardised, so 58% of filings are classified by regex with zero LLM calls. The rest go to `gemini-3.5-flash-lite` in batches of 15.
+1. **Rules before models.** BSE subject lines are standardised, so 57% of filings (119 of 208) are classified by regex with zero LLM calls. The rest go to `gemini-3.5-flash-lite` in batches of 15.
 2. **Materiality is computed in code, not by the model.** The model only *extracts* facts (₹ amount, people, rating action). Code sizes them against the company: order as % of TTM revenue, raise as % of market cap, litigation amount, rating direction, executive seniority. Every factor becomes the card's "why".
 3. **No model touches a number the user sees.** Results cards are computed from the reported quarterly table. The text in the filing is **cross-checked** against them (ITC's "19% revenue growth" vs 3.9% in the table gets flagged, not hidden). Red flags (qualified audit opinion, exceptional items) are detected from filing text.
 4. **One-liner number guard.** Every number in a generated one-liner must exist in the filing (unit conversions allowed within 0.5%). It caught a real 10× crore/million error.
@@ -48,7 +48,7 @@ Next.js PWA (Vercel) ──Bearer JWT──▶ FastAPI (Render) ──▶ Supaba
    - Two model tiers: `gemini-3.5-flash-lite` for bulk, `gemini-3.6-flash` only for reasoning, with automatic fallback when a model is overloaded. `gemini-3.8-flash` is opt-in via `FINN_REASON_MODEL`, because it was timing out on our key.
    - A Postgres response cache means identical work is never paid twice.
    - Per-call logging is priced at Google's published rates and shown in-app.
-   - **Everything built so far** (110 filings classified, 3 executive bios, research dossiers for 23 companies) **would cost $0.20 at paid rates**. It's ₹0 billed, on the free tier.
+   - **Everything built so far** (208 filings classified, 8 executive bios, research for 36 companies, 20 documents indexed, 34 Surya replies including cache hits) **would cost $0.87 at paid rates**. It's ₹0 billed, on the free tier.
    - A pipeline run with nothing new costs zero LLM calls.
 8. **Honest limits over fake completeness.** "Quiet day" instead of padding the feed, "pending" when a quarter isn't posted yet, "needs documents" instead of guessing management's guidance.
 
