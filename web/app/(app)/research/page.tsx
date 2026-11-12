@@ -189,7 +189,7 @@ function Index() {
                   <h2>Worth checking</h2>
                   <p>Beyond your portfolio · ranked by what changed</p>
                 </div>
-                <span className="wc-count">{others.length}<small>tracked</small></span>
+                <span className="wc-count">Top {others.length}</span>
               </div>
               {otherSig ? (
                 <>
