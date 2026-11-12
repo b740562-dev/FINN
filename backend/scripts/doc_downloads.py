@@ -205,6 +205,8 @@ def sort_downloads(src: Path, ingest: bool) -> None:
     for r in ingest_inbox():
         print(f"  {r.get('file')}: {r.get('status')} pages={r.get('pages_kept', r.get('pages'))} chunks={r.get('chunks')}"
               f" {r.get('seconds', '')}s")
+    from scripts.backfill_doc_sources import backfill
+    print("linked to BSE source:", backfill())
     syms = sorted({e["symbol"] for e in placed})
     for s in syms:
         S.invalidate(s)

@@ -1,12 +1,16 @@
 """Surya chat endpoints: general guidance + document-grounded company answers,
-and server-side speech-to-text for the chat's mic button."""
+server-side speech-to-text for the mic button, and chat history for logged-in
+(non-guest) accounts."""
 from __future__ import annotations
+
+import json
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from finn import llm
 from finn.api.auth import User, current_user
+from finn.db import cursor
 from finn.pull.chat import GREETING, chat
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -25,11 +29,18 @@ class ChatReq(BaseModel):
     message: str = Field(min_length=1, max_length=800)
     history: list[Turn] = Field(default_factory=list, max_length=20)
     symbols: list[str] = Field(default_factory=list, max_length=2)
+    thread_id: int | None = None
 
 
 @router.get("/hello")
 def hello(user: User = Depends(current_user)):
-    return {"greeting": GREETING}
+    return {"greeting": GREETING, "history": not user.is_anonymous}
+
+
+def _own_thread(c, thread_id: int, user: User) -> None:
+    c.execute("select 1 from public.chat_threads where id = %s and user_id = %s::uuid", (thread_id, user.id))
+    if not c.fetchone():
+        raise HTTPException(404, "No such conversation")
 
 
 @router.post("")
@@ -37,7 +48,57 @@ def send(req: ChatReq, user: User = Depends(current_user)):
     out = chat(req.message, [t.model_dump() for t in req.history], req.symbols)
     if not user.is_admin:
         out["model"] = None
+    out["thread_id"] = None
+    if not user.is_anonymous:                  # guests' chats stay on their device only
+        payload = {k: out[k] for k in ("kind", "citations", "verified", "companies")}
+        with cursor() as c:
+            tid = req.thread_id
+            if tid:
+                _own_thread(c, tid, user)
+                c.execute("update public.chat_threads set updated_at = now() where id = %s", (tid,))
+            else:
+                c.execute("insert into public.chat_threads (user_id, title) values (%s::uuid, %s) returning id",
+                          (user.id, req.message.strip()[:80]))
+                tid = c.fetchone()[0]
+            c.execute("insert into public.chat_messages (thread_id, role, content) values (%s, 'user', %s)",
+                      (tid, req.message.strip()))
+            c.execute("""insert into public.chat_messages (thread_id, role, content, payload)
+                         values (%s, 'assistant', %s, %s::jsonb)""", (tid, out["answer"], json.dumps(payload)))
+        out["thread_id"] = tid
     return out
+
+
+@router.get("/threads")
+def threads(user: User = Depends(current_user)):
+    if user.is_anonymous:
+        return {"threads": [], "history": False}
+    with cursor(commit=False) as c:
+        c.execute("""select t.id, t.title, t.updated_at, count(m.id)
+                     from public.chat_threads t left join public.chat_messages m on m.thread_id = t.id
+                     where t.user_id = %s::uuid group by t.id order by t.updated_at desc limit 50""", (user.id,))
+        rows = [{"id": i, "title": t, "updated_at": u.isoformat(), "messages": n} for i, t, u, n in c.fetchall()]
+    return {"threads": rows, "history": True}
+
+
+@router.get("/threads/{thread_id}")
+def thread(thread_id: int, user: User = Depends(current_user)):
+    with cursor(commit=False) as c:
+        _own_thread(c, thread_id, user)
+        c.execute("""select id, role, content, payload from public.chat_messages
+                     where thread_id = %s order by id""", (thread_id,))
+        msgs = []
+        for mid, role, content, payload in c.fetchall():
+            p = payload if isinstance(payload, dict) else (json.loads(payload) if payload else {})
+            msgs.append({"id": mid, "role": role, "text": content, **p})
+    return {"id": thread_id, "messages": msgs}
+
+
+@router.delete("/threads/{thread_id}")
+def delete_thread(thread_id: int, user: User = Depends(current_user)):
+    with cursor() as c:
+        _own_thread(c, thread_id, user)
+        c.execute("delete from public.chat_threads where id = %s", (thread_id,))
+    return {"status": "deleted", "id": thread_id}
 
 
 @router.post("/transcribe")

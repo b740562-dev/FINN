@@ -16,7 +16,7 @@ const STARTERS = [
   "What is BEL's order book?",
   "When should I rebalance my portfolio?",
 ];
-const STORE = "finn.surya.v1";
+const STORE = "finn.surya.v2";   // { threadId, msgs }: the open conversation on this device
 const STAGE: Record<string, string> = { queued: "Queued", reading: "Reading the PDF", indexing: "Indexing passages", analysing: "Analysing" };
 
 type Co = { symbol: string; name: string; documents: string[] };
@@ -25,11 +25,22 @@ type Msg = {
   role: "user" | "assistant" | "note";
   text: string;
   kind?: "general" | "company_data" | "missing";
-  citations?: Citation[];
+  citations?: Cite[];
+  verified?: boolean;
   companies?: Co[];
   job?: { symbol: string; id: number; done?: boolean };
 };
-type Reply = { answer: string; kind: Msg["kind"]; citations: Citation[]; companies: Co[] };
+type Cite = Citation & { url?: string };
+type Reply = { answer: string; kind: Msg["kind"]; citations: Cite[]; companies: Co[]; verified?: boolean; thread_id?: number | null };
+type Thread = { id: number; title: string; updated_at: string; messages: number };
+
+function ago(iso: string) {
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  if (m < 1440) return `${Math.round(m / 60)}h ago`;
+  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -63,6 +74,9 @@ export default function Surya() {
   const endRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [threadId, setThreadId] = useState<number | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [threads, setThreads] = useState<Thread[] | null>(null);
   // Voice: idle -> recording -> transcribing -> idle (transcript lands in the box)
   const [voice, setVoice] = useState<"idle" | "recording" | "transcribing">("idle");
   const [secs, setSecs] = useState(0);
@@ -79,13 +93,47 @@ export default function Surya() {
 
   // Conversation survives a reload on this device (convenience only).
   useEffect(() => {
-    try { const raw = localStorage.getItem(STORE); if (raw) setMsgs(JSON.parse(raw)); } catch {}
+    try {
+      const raw = localStorage.getItem(STORE);
+      if (raw) { const v = JSON.parse(raw); setMsgs(v.msgs ?? []); setThreadId(v.threadId ?? null); }
+    } catch {}
     setHydrated(true);
   }, []);
   useEffect(() => {
     if (!hydrated) return;      // never overwrite the saved chat before it has been read
-    try { localStorage.setItem(STORE, JSON.stringify(msgs.slice(-40))); } catch {}
-  }, [msgs, hydrated]);
+    try { localStorage.setItem(STORE, JSON.stringify({ threadId, msgs: msgs.slice(-40) })); } catch {}
+  }, [msgs, threadId, hydrated]);
+
+  async function openHistory() {
+    setShowHistory(true);
+    if (guest) return;
+    setThreads(null);
+    try { setThreads((await api<{ threads: Thread[] }>("/chat/threads")).threads); } catch { setThreads([]); }
+  }
+
+  async function openThread(id: number) {
+    setShowHistory(false);
+    try {
+      const t = await api<{ messages: (Msg & { id: number })[] }>(`/chat/threads/${id}`);
+      setMsgs(t.messages.map((m) => ({ ...m, id: `s${m.id}` })));
+      setThreadId(id);
+    } catch (e) {
+      note((e as Error).message);
+    }
+  }
+
+  async function deleteThread(id: number) {
+    try {
+      await api(`/chat/threads/${id}`, { method: "DELETE" });
+      setThreads((ts) => (ts ?? []).filter((t) => t.id !== id));
+      if (id === threadId) { setThreadId(null); setMsgs([]); }
+    } catch {}
+  }
+
+  function newChat() {
+    setMsgs([]);
+    setThreadId(null);
+  }
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [msgs, thinking]);
 
   // Follow any document that is still being read.
@@ -118,15 +166,17 @@ export default function Surya() {
     setText("");
     setThinking(true);
     try {
-      const r = await api<Reply>("/chat", { method: "POST", body: JSON.stringify({ message: q, history }) });
-      setMsgs((ms) => [...ms, { id: uid(), role: "assistant", text: r.answer, kind: r.kind, citations: r.citations, companies: r.companies }]);
+      const r = await api<Reply>("/chat", { method: "POST", body: JSON.stringify({ message: q, history, thread_id: threadId }) });
+      if (r.thread_id) setThreadId(r.thread_id);
+      setMsgs((ms) => [...ms, { id: uid(), role: "assistant", text: r.answer, kind: r.kind, citations: r.citations,
+        companies: r.companies, verified: r.verified }]);
     } catch (e) {
       setMsgs((ms) => [...ms, { id: uid(), role: "note", text: (e as Error).message }]);
     } finally {
       setThinking(false);
       boxRef.current?.focus();
     }
-  }, [msgs, thinking]);
+  }, [msgs, thinking, threadId]);
 
   function note(t: string) {
     setMsgs((ms) => [...ms, { id: uid(), role: "note", text: t }]);
@@ -192,8 +242,13 @@ export default function Surya() {
           <b>Surya</b>
           <small>Investment guide · facts only from verified documents</small>
         </div>
+        <button className="sy-new" onClick={openHistory} aria-label="Chat history" title="Chat history">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5M12 7v5l3 2" />
+          </svg>
+        </button>
         {msgs.length > 0 && (
-          <button className="sy-new" onClick={() => setMsgs([])} aria-label="New chat" title="New chat">
+          <button className="sy-new" onClick={newChat} aria-label="New chat" title="New chat">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M12 5v14M5 12h14" />
             </svg>
@@ -223,13 +278,30 @@ export default function Surya() {
             <SunMark size={28} />
             <div className={`sy-bubble ${m.kind === "missing" ? "missing" : ""}`}>
               <div className="sy-text"><Cited text={m.text} cites={m.citations ?? []} open={cite.open} /></div>
-              {m.citations && m.citations.length > 0 && (
-                <div className="sy-srcs">
+              {m.verified && m.citations && m.citations.length > 0 ? (
+                <div className="sy-verified">
+                  <div className="sy-vhead">
+                    <span className="sy-vtick" aria-hidden>✓</span>
+                    <b>Verified</b><span>every figure checked against the original</span>
+                  </div>
                   {[...new Map(m.citations.map((c) => [sourceLabel(c), c])).entries()].map(([label, c]) => (
-                    <button key={label} onClick={() => cite.open(c)}>{label}</button>
+                    <div key={label} className="sy-vrow">
+                      <button onClick={() => cite.open(c)} title="See the exact quote">❝</button>
+                      {c.url
+                        ? <a href={c.url} target="_blank" rel="noreferrer">{label} <span aria-hidden>↗</span></a>
+                        : <span className="sy-nolink">{label}</span>}
+                    </div>
                   ))}
                 </div>
-              )}
+              ) : m.citations && m.citations.length > 0 ? (
+                <div className="sy-srcs">
+                  {[...new Map(m.citations.map((c) => [sourceLabel(c), c])).entries()].map(([label, c]) => (
+                    c.url
+                      ? <a key={label} href={c.url} target="_blank" rel="noreferrer">{label} ↗</a>
+                      : <button key={label} onClick={() => cite.open(c)}>{label}</button>
+                  ))}
+                </div>
+              ) : null}
               {m.kind === "missing" && (
                 <button className="sy-add" onClick={() => setUpload(m.companies?.[0] ? { symbol: m.companies[0].symbol, name: m.companies[0].name } : null)}>
                   📎 Add {m.companies?.[0]?.symbol ?? "a"} report
@@ -293,6 +365,42 @@ export default function Surya() {
             <div className="grab" />
             <b className="sy-sheet-t">Add a report for Surya to read</b>
             <DocUploadForm guest={guest} initial={upload} onCancel={() => setUpload(false)} onUploaded={uploaded} />
+          </div>
+        </div>
+      )}
+      {showHistory && (
+        <div className="sheet-bg" onClick={() => setShowHistory(false)} role="dialog" aria-modal aria-label="Chat history">
+          <div className="sheet sy-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="grab" />
+            <div className="sy-hhead">
+              <b>Chat history</b>
+              <button className="btn primary sm" onClick={() => { newChat(); setShowHistory(false); }}>＋ New chat</button>
+            </div>
+            {guest ? (
+              <div className="sy-hempty">
+                <p>Log in to keep your conversations with Surya and pick them up on any device.</p>
+                <a className="btn primary" href="/login">Log in</a>
+              </div>
+            ) : threads === null ? (
+              <div className="skel sm" style={{ margin: "10px 0 0" }} />
+            ) : threads.length === 0 ? (
+              <div className="sy-hempty"><p>No saved conversations yet. Ask Surya something to start one.</p></div>
+            ) : (
+              <ul className="sy-hlist">
+                {threads.map((t) => (
+                  <li key={t.id} className={t.id === threadId ? "on" : ""}>
+                    <button className="sy-hopen" onClick={() => openThread(t.id)}>
+                      <b>{t.title}</b><small>{ago(t.updated_at)} · {Math.ceil(t.messages / 2)} {t.messages > 2 ? "questions" : "question"}</small>
+                    </button>
+                    <button className="sy-hdel" onClick={() => deleteThread(t.id)} aria-label={`Delete "${t.title}"`}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+                      </svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       )}

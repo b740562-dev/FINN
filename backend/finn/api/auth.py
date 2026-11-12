@@ -67,6 +67,8 @@ def _dev_user(request: Request, token: str) -> User | None:
         return None
     if not request.client or request.client.host not in _LOCAL_HOSTS:
         raise HTTPException(401, "Dev demo token is only accepted from localhost")
+    if os.getenv("FINN_DEV_MEMBER") == "1":   # demo the logged-in experience (chat history, uploads)
+        return User(id=DEV_USER_ID, is_anonymous=False, email="demo@finn.local")
     return User(id=DEV_USER_ID, is_anonymous=True, email=None)
 
 

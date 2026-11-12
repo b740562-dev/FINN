@@ -323,6 +323,86 @@ def put_rules(req: RulesReq, user: User = Depends(current_user)):
     return {"rules": _rules(user.id), "alerts": run_alerts(lookback_days=30, user_id=user.id)}
 
 
+# -------------------------------------------------------- holding signals
+# Research colour-codes each holding. Every tag is computed from data, never
+# generated: what's important (material filing lately), what's volatile (price
+# swings), what looks promising (price trend backed by profit growth).
+VOL_HIGH = 35.0        # annualised 20-day volatility, %. Absolute, not a 1-month move: a market-wide
+                       # rally would otherwise tag every holding "volatile".
+IMPORTANT_MAT = 60     # filing materiality
+IMPORTANT_DAYS = 14
+
+
+@app.get("/holdings/signals")
+def holding_signals(user: User = Depends(current_user)):
+    import math
+
+    from finn.push.results import build_card
+
+    pf = _portfolio(user.id)
+    syms = [h["symbol"] for h in pf["holdings"]]
+    if not syms:
+        return {"items": [], "counts": {}, "rules": {}}
+    with cursor(commit=False) as c:
+        c.execute("""select symbol, array_agg(close order by date desc) from (
+                       select symbol, date, close, row_number() over (partition by symbol order by date desc) rn
+                       from public.prices_eod where symbol = any(%s::text[])) x
+                     where rn <= 70 group by symbol""", (syms,))
+        closes = {s: [float(v) for v in arr if v is not None] for s, arr in c.fetchall()}
+        c.execute("""select distinct on (symbol) symbol, materiality, category, coalesce(one_liner, subject), filed_at
+                     from public.filings
+                     where symbol = any(%s::text[]) and materiality >= %s
+                       and filed_at >= now() - make_interval(days => %s::int)
+                     order by symbol, materiality desc, filed_at desc""", (syms, IMPORTANT_MAT, IMPORTANT_DAYS))
+        news = {s: {"materiality": int(m), "category": cat, "headline": h, "filed_at": ts.isoformat()}
+                for s, m, cat, h, ts in c.fetchall()}
+        c.execute("select symbol, tables->'quarters', basis from public.fundamentals where symbol = any(%s::text[])",
+                  (syms,))
+        quarters = {s: (q if isinstance(q, dict) else json.loads(q or "{}"), b) for s, q, b in c.fetchall()}
+
+    def ret(px: list[float], n: int) -> float | None:
+        return round((px[0] / px[n] - 1) * 100, 1) if len(px) > n and px[n] else None
+
+    items, counts = [], {"important": 0, "volatile": 0, "promising": 0, "steady": 0}
+    for h in pf["holdings"]:
+        s = h["symbol"]
+        px = closes.get(s, [])
+        daily = [math.log(px[i] / px[i + 1]) for i in range(min(20, len(px) - 1)) if px[i] and px[i + 1]]
+        vol = None
+        if len(daily) >= 10:
+            mu = sum(daily) / len(daily)
+            vol = round(math.sqrt(sum((d - mu) ** 2 for d in daily) / (len(daily) - 1)) * math.sqrt(252) * 100, 1)
+        r1m, r3m = ret(px, 21), ret(px, 63)
+        pat_yoy, quarter = None, None
+        if s in quarters:
+            card = build_card(s, quarters[s][0], quarters[s][1])
+            if card:
+                quarter = card.get("quarter_label")
+                pat = next((m for m in card.get("metrics", []) if m["key"] == "pat"), None)
+                pat_yoy = pat.get("yoy_pct") if pat else None
+        tags = []
+        if s in news:
+            tags.append("important")
+        if vol is not None and vol >= VOL_HIGH:
+            tags.append("volatile")
+        if r3m is not None and r3m > 5 and pat_yoy is not None and pat_yoy > 10:
+            tags.append("promising")
+        if not tags:
+            tags.append("steady")
+        for t in tags:
+            counts[t] += 1
+        items.append({"symbol": s, "name": h["name"], "weight": h["weight"], "tags": tags, "primary": tags[0],
+                      "vol_20d": vol, "ret_1m": r1m, "ret_3m": r3m, "pat_yoy": pat_yoy, "quarter": quarter,
+                      "news": news.get(s)})
+    order = {"important": 0, "volatile": 1, "promising": 2, "steady": 3}
+    items.sort(key=lambda x: (order[x["primary"]], -(x["weight"] or 0)))
+    return {"items": items, "counts": counts,
+            "rules": {"important": f"filing with materiality ≥ {IMPORTANT_MAT} in the last {IMPORTANT_DAYS} days",
+                      "volatile": f"20-day price volatility ≥ {VOL_HIGH:g}% a year",
+                      "promising": "price up over 3 months and latest quarter's profit up > 10% YoY",
+                      "steady": "none of the above"}}
+
+
 # ---------------------------------------------------------------- holdings
 class HoldingIn(BaseModel):
     symbol: str
@@ -372,7 +452,7 @@ def companies(q: str = Query("", max_length=40), user: User = Depends(current_us
     with cursor(commit=False) as c:
         c.execute("""select symbol, name, sector, market_cap_cr from public.companies
                      where %s = '' or symbol ilike %s or name ilike %s
-                     order by market_cap_cr desc nulls last limit 25""", (q, f"{q}%", f"%{q}%"))
+                     order by market_cap_cr desc nulls last limit 100""", (q, f"{q}%", f"%{q}%"))
         return [{"symbol": s, "name": n, "sector": sec, "market_cap_cr": float(m) if m else None}
                 for s, n, sec, m in c.fetchall()]
 

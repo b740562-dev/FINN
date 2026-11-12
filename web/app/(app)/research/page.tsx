@@ -8,7 +8,27 @@ import { useData } from "@/components/data";
 import { ProfileButton } from "@/components/profile-menu";
 
 type Co = { symbol: string; name: string; sector: string | null; market_cap_cr: number | null };
+type Tag = "important" | "volatile" | "promising" | "steady";
+type Signal = {
+  symbol: string; name: string; weight: number; tags: Tag[]; primary: Tag;
+  vol_20d: number | null; ret_1m: number | null; ret_3m: number | null; pat_yoy: number | null; quarter: string | null;
+  news: { materiality: number; category: string; headline: string } | null;
+};
+type Signals = { items: Signal[]; counts: Record<Tag, number>; rules: Record<Tag, string> };
+
+// Companies with their annual report and four concall transcripts loaded: full document-based research.
 const RESEARCH_SET = ["BEL", "TITAN", "ASIANPAINT", "KPITTECH"];
+const TAG: Record<Tag, { label: string; icon: string }> = {
+  important: { label: "Important", icon: "!" },
+  volatile: { label: "Volatile", icon: "≋" },
+  promising: { label: "Promising", icon: "↗" },
+  steady: { label: "Steady", icon: "–" },
+};
+
+function pctTxt(v: number | null) {
+  if (v === null || v === undefined) return "–";
+  return `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
+}
 
 function Index() {
   const params = useSearchParams();
@@ -16,20 +36,32 @@ function Index() {
   const { me } = useData();
   const [q, setQ] = useState(params.get("q") ?? "");
   const [all, setAll] = useState<Co[] | null>(null);
+  const [sig, setSig] = useState<Signals | null>(null);
+  const [filter, setFilter] = useState<Tag | null>(null);
 
   useEffect(() => {
     api<Co[]>(`/companies?q=${encodeURIComponent(q.length >= 2 ? q : "")}`).then(setAll).catch(() => setAll([]));
   }, [q]);
+  useEffect(() => {
+    api<Signals>("/holdings/signals").then(setSig).catch(() => setSig(null));
+  }, [me?.holdings.length]);
 
   const held = new Set(me?.holdings.map((h) => h.symbol) ?? []);
   const list = all ?? [];
-  const groups: [string, Co[]][] = q.length >= 2
-    ? [["Matches", list]]
-    : [
-        ["Research picks", list.filter((c) => RESEARCH_SET.includes(c.symbol))],
-        ["Your holdings", list.filter((c) => held.has(c.symbol))],
-        ["Other tracked", list.filter((c) => !held.has(c.symbol) && !RESEARCH_SET.includes(c.symbol))],
-      ];
+  const searching = q.length >= 2;
+  const picks = list.filter((c) => RESEARCH_SET.includes(c.symbol));
+  const others = list.filter((c) => !held.has(c.symbol) && !RESEARCH_SET.includes(c.symbol));
+  const holdings = (sig?.items ?? []).filter((x) => !filter || x.tags.includes(filter));
+
+  const row = (c: Co, cls = "other") => (
+    <Link key={c.symbol} href={`/research/${c.symbol}`} className={`card ${cls}`} style={{ display: "block" }}>
+      <div className="ch">
+        <span><span className="tk">{c.symbol}</span> <span className="muted" style={{ fontSize: 12 }}>{c.name}</span></span>
+        <span className="src">{c.market_cap_cr ? `₹${Math.round(c.market_cap_cr).toLocaleString("en-IN")} cr` : ""}</span>
+      </div>
+      {c.sector && <div className="co">{c.sector}</div>}
+    </Link>
+  );
 
   return (
     <>
@@ -41,23 +73,76 @@ function Index() {
         </form>
       </header>
       {!all && <><div className="skel sm" style={{ marginTop: 12 }} /><div className="skel sm" /></>}
-      {groups.filter(([, xs]) => xs.length).map(([title, xs]) => (
-        <section key={title}>
-          <div className="sec"><span>── {title}</span><span>{xs.length}</span></div>
-          {xs.map((c) => (
-            <Link key={c.symbol} href={`/research/${c.symbol}`} className="card other" style={{ display: "block" }}>
-              <div className="ch">
-                <span><span className="tk">{c.symbol}</span> <span className="muted" style={{ fontSize: 12 }}>{c.name}</span></span>
-                <span className="src">{c.market_cap_cr ? `₹${Math.round(c.market_cap_cr).toLocaleString("en-IN")} cr` : ""}</span>
+
+      {searching ? (
+        list.length > 0 && (
+          <section>
+            <div className="sec"><span>── Matches</span><span>{list.length}</span></div>
+            {list.map((c) => row(c))}
+          </section>
+        )
+      ) : (
+        <>
+          {picks.length > 0 && (
+            <section>
+              <div className="sec rp-h"><span>── Top research picks</span><span>full documents</span></div>
+              <div className="rp-grid">
+                {picks.map((c) => (
+                  <Link key={c.symbol} href={`/research/${c.symbol}`} className="rp-card">
+                    <span className="rp-badge">★ Deep research</span>
+                    <b>{c.symbol}</b>
+                    <small>{c.name}</small>
+                    <span className="rp-meta">Annual report + 4 concalls</span>
+                  </Link>
+                ))}
               </div>
-              {c.sector && <div className="co">{c.sector}</div>}
-            </Link>
-          ))}
-        </section>
-      ))}
-      {all && q.length >= 2 && list.length === 0 && (
+            </section>
+          )}
+
+          {sig && sig.items.length > 0 && (
+            <section>
+              <div className="sec"><span>── Your holdings</span><span>{sig.items.length}</span></div>
+              <div className="hs-legend">
+                {(Object.keys(TAG) as Tag[]).filter((t) => sig.counts[t]).map((t) => (
+                  <button key={t} className={`hs-key ${t} ${filter === t ? "on" : ""}`} title={sig.rules[t]}
+                    onClick={() => setFilter(filter === t ? null : t)} aria-pressed={filter === t}>
+                    <i />{sig.counts[t]} {TAG[t].label}
+                  </button>
+                ))}
+              </div>
+              {holdings.map((x) => (
+                <Link key={x.symbol} href={`/research/${x.symbol}`} className={`hs-card ${x.primary}`}>
+                  <div className="hs-top">
+                    <span className={`hs-ic ${x.primary}`} aria-hidden>{TAG[x.primary].icon}</span>
+                    <span className="hs-who"><b>{x.symbol}</b><small>{x.name}</small></span>
+                    <span className="hs-tags">
+                      {x.tags.map((t) => <span key={t} className={`hs-tag ${t}`}>{TAG[t].label}</span>)}
+                    </span>
+                  </div>
+                  <div className="hs-stats">
+                    <span><small>3M</small><b className={(x.ret_3m ?? 0) >= 0 ? "up" : "dn"}>{pctTxt(x.ret_3m)}</b></span>
+                    <span><small>Volatility</small><b className={(x.vol_20d ?? 0) >= 35 ? "warn" : ""}>{x.vol_20d === null ? "–" : `${x.vol_20d.toFixed(0)}%`}</b></span>
+                    <span><small>PAT YoY{x.quarter ? ` · ${x.quarter}` : ""}</small><b className={(x.pat_yoy ?? 0) >= 0 ? "up" : "dn"}>{pctTxt(x.pat_yoy)}</b></span>
+                    <span><small>Weight</small><b>{x.weight.toFixed(0)}%</b></span>
+                  </div>
+                  {x.news && <div className="hs-news"><i aria-hidden>!</i>{x.news.headline}</div>}
+                </Link>
+              ))}
+            </section>
+          )}
+
+          {others.length > 0 && (
+            <section>
+              <div className="sec"><span>── Other tracked</span><span>{others.length}</span></div>
+              {others.map((c) => row(c))}
+            </section>
+          )}
+        </>
+      )}
+
+      {all && searching && list.length === 0 && (
         <div className="empty"><b>Not tracked yet</b>FINN can fetch it now.
-          <div><Link className="btn" href={`/research/${encodeURIComponent(q.toUpperCase())}`}>RESEARCH {q.toUpperCase()} →</Link></div>
+          <div><Link className="btn" href={`/research/${encodeURIComponent(q.toUpperCase())}`}>Research {q.toUpperCase()} →</Link></div>
         </div>
       )}
     </>

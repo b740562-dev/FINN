@@ -182,6 +182,7 @@ def chat(message: str, history: list[dict] | None = None, symbols: list[str] | N
         companies = detect_companies(" ".join(h.get("content", "") for h in history[-2:] if h["role"] == "user"))
 
     material, nrefs, crefs, grefs, inventory = [], {}, {}, {}, []
+    nsym: dict[str, str] = {}
     for co in companies:
         sym = co["symbol"]
         docs = documents(sym)
@@ -194,6 +195,7 @@ def chat(message: str, history: list[dict] | None = None, symbols: list[str] | N
         start = len(nrefs)
         for i, f in enumerate(facts):
             nrefs[f"n{start + i + 1}"] = f"{co['name']}: {f}"
+            nsym[f"n{start + i + 1}"] = sym
         for ch in (_retrieve(sym, co["name"], message, docs) if docs else []):
             crefs[f"c{len(crefs) + 1}"] = ch          # ids unique across companies
         gstart = len(grefs)
@@ -258,6 +260,38 @@ def chat(message: str, history: list[dict] | None = None, symbols: list[str] | N
     if kind == "missing" or guard:
         answer, cites, kind = _missing_text(companies, out.get("missing_report")), [], "missing"
 
-    return {"answer": answer, "kind": kind, "citations": list({c["id"]: c for c in cites}.values()),
+    cites = _with_sources(list({c["id"]: c for c in cites}.values()), nsym)
+    # "Verified": a company answer with figures, every one of which passed the
+    # number check against sources the user can open.
+    verified = kind == "company_data" and bool(re.search(r"\d", re.sub(r"\[[cng]\d+\]", "", answer))) \
+        and bool(cites) and all(c.get("url") for c in cites)
+    return {"answer": answer, "kind": kind, "citations": cites, "verified": verified,
             "companies": inventory, "verification": {"dropped_refs": dropped, "guard": guard},
             "model": llm.REASON}
+
+
+def _with_sources(cites: list[dict], nsym: dict[str, str]) -> list[dict]:
+    """Attach a link to the original for every citation: the exchange PDF a
+    document came from (opened at the cited page), or the company's financials
+    page for reported numbers."""
+    doc_ids = [c["doc_id"] for c in cites if c.get("doc_id")]
+    urls: dict[int, str] = {}
+    if doc_ids:
+        with cursor(commit=False) as c:
+            c.execute("select id, source_url from public.documents where id = any(%s::bigint[])", (doc_ids,))
+            urls = {i: u for i, u in c.fetchall() if u}
+    out = []
+    for c in cites:
+        c = dict(c)
+        if c.get("doc_id") and c["doc_id"] in urls:
+            base = urls[c["doc_id"]]
+            c["url"] = f"{base}#page={c['page']}" if c.get("page") and ".pdf" in base.lower() else base
+        elif c["id"] in nsym:
+            sym = nsym[c["id"]]
+            with cursor(commit=False) as cur:
+                cur.execute("select basis from public.companies where symbol = %s", (sym,))
+                r = cur.fetchone()
+            c["url"] = f"https://www.screener.in/company/{sym}/" + ("consolidated/" if r and r[0] == "consolidated" else "")
+            c["doc_label"] = "Reported financials"
+        out.append(c)
+    return out

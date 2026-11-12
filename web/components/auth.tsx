@@ -24,10 +24,13 @@ const Ctx = createContext<AuthCtx | null>(null);
 
 /** Minimal session object for local demo mode (see lib/devauth.ts). */
 function devSession(): Session {
+  // NEXT_PUBLIC_DEV_MEMBER=1 (with the API's FINN_DEV_MEMBER=1) demos the logged-in experience locally.
+  const member = process.env.NEXT_PUBLIC_DEV_MEMBER === "1";
   return {
     access_token: DEV_TOKEN, refresh_token: "", expires_in: 3600, token_type: "bearer",
-    user: { id: DEV_USER_ID, is_anonymous: true, email: undefined, aud: "authenticated", app_metadata: {},
-            user_metadata: {}, created_at: new Date().toISOString() },
+    user: { id: DEV_USER_ID, is_anonymous: !member, email: member ? "demo@finn.local" : undefined,
+            email_confirmed_at: member ? new Date().toISOString() : undefined, aud: "authenticated",
+            app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() },
   } as unknown as Session;
 }
 

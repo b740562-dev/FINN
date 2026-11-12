@@ -12,8 +12,8 @@ export function AskBar() {
         <text><textPath href="#orb-path" textLength="168" lengthAdjust="spacing">ASK ME · ASK ME · ASK ME ·</textPath></text>
       </svg>
       <span className="orb-tip" role="tooltip">
-        <b>Ask your most difficult investment question</b>
-        <small>Answers grounded in verified company documents</small>
+        <b>Hi, I am Surya.</b>
+        <span>Ask me your most confusing investment question.</span>
       </span>
       <span className="orb-core">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">

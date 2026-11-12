@@ -24,15 +24,30 @@ function dayLabel(d: string | null) {
   return date.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 }
 
+/** One colour per kind of alert: what moved, which way, and how much a filing matters. */
+type Tone = "drop" | "jump" | "vol" | "high" | "med" | "low";
+const TONE: Record<Tone, string> = {
+  drop: "Price drop", jump: "Price jump", vol: "Volume spike", high: "Filing · high", med: "Filing · medium", low: "Filing · low",
+};
+function toneOf(a: Alert): Tone {
+  if (a.kind === "filing") {
+    const m = a.payload.materiality ?? 0;
+    return m >= 70 ? "high" : m >= 50 ? "med" : "low";
+  }
+  if (a.kind === "volume") return "vol";
+  return (a.payload.change_pct ?? 0) < 0 ? "drop" : "jump";
+}
+
 function AlertCard({ a }: { a: Alert }) {
   const p = a.payload;
+  const t = toneOf(a);
   if (a.kind === "filing") {
     const variant = p.category === "results" ? "results" : p.category === "management_change" ? "mgmt" : ["M&A", "fund_raise"].includes(p.category ?? "") ? "deal" : "other";
     return (
-      <article className={`card ${variant} ${a.read ? "" : "unread"}`}>
+      <article className={`card ${variant} al-${t} ${a.read ? "" : "unread"}`}>
         <div className="ch">
           <span><Link className="tk" href={`/research/${a.symbol}`}>{a.symbol}</Link><span className="tag">{CAT[p.category ?? ""] ?? p.category}</span></span>
-          <span className="src">FILING</span>
+          <span className={`al-pill ${t}`}>{t === "high" ? "High" : t === "med" ? "Medium" : "Low"}</span>
         </div>
         <div className="head">{p.headline}</div>
         <div className="foot">
@@ -44,11 +59,11 @@ function AlertCard({ a }: { a: Alert }) {
   }
   const neg = (p.change_pct ?? 0) < 0;
   return (
-    <article className={`card alert ${neg ? "neg" : ""} ${a.read ? "" : "unread"}`}>
+    <article className={`card alert ${neg ? "neg" : ""} al-${t} ${a.read ? "" : "unread"}`}>
       <div className="ch">
         <span>
           <Link className="tk" href={`/research/${a.symbol}`}>{a.symbol}</Link>
-          <span className="tag">{a.kind === "move" ? (neg ? "Price drop" : "Price jump") : "Vol spike"}</span>
+          <span className={`al-pill ${t}`}>{TONE[t]}</span>
         </span>
         <span className="src">EOD · ₹{p.close?.toLocaleString("en-IN")}</span>
       </div>
@@ -92,6 +107,11 @@ export default function Alerts() {
     return g;
   }, {});
   const r = me?.rules;
+  const toneCounts = shown.reduce<Partial<Record<Tone, number>>>((m, a) => {
+    const t = toneOf(a);
+    m[t] = (m[t] ?? 0) + 1;
+    return m;
+  }, {});
 
   return (
     <>
@@ -111,6 +131,14 @@ export default function Alerts() {
       </header>
 
       <NewsSearch />
+
+      {shown.length > 0 && (
+        <div className="al-legend" aria-label="Colour key">
+          {(Object.keys(TONE) as Tone[]).filter((t) => toneCounts[t]).map((t) => (
+            <span key={t} className={`al-key ${t}`}><i />{toneCounts[t]} {TONE[t]}</span>
+          ))}
+        </div>
+      )}
 
       {err && <div className="err">{err}</div>}
       {!items && !err && (<><div className="skel sm" style={{ marginTop: 12 }} /><div className="skel sm" /><div className="skel sm" /></>)}
