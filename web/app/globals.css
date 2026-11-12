@@ -1135,3 +1135,8 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .surya-orb .orb-tip { border-color: rgba(198,244,94,0.45); }
 .surya-orb .orb-tip::before { border-left-color: rgba(198,244,94,0.45); border-bottom-color: rgba(198,244,94,0.45); }
 .surya-orb .orb-tip b, .surya-orb .orb-tip small { color: #c6f45e; }
+
+/* "Open ↗" (original source) in New reports and Surya: themed teal, not grey */
+.nr-open { color: var(--blue); background: rgba(127,216,232,0.10); border-color: rgba(127,216,232,0.4); font-weight: 800; }
+.nr-open:hover { background: rgba(127,216,232,0.18); }
+.sy-pacts a { color: var(--blue); background: rgba(127,216,232,0.10); border: 1px solid rgba(127,216,232,0.4); border-radius: 9px; font-weight: 800; }

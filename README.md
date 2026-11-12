@@ -48,7 +48,7 @@ Next.js PWA (Vercel) ──Bearer JWT──▶ FastAPI (Render) ──▶ Supaba
    - Two model tiers: `gemini-3.5-flash-lite` for bulk, `gemini-3.6-flash` only for reasoning, with automatic fallback when a model is overloaded. `gemini-3.8-flash` is opt-in via `FINN_REASON_MODEL`, because it was timing out on our key.
    - A Postgres response cache means identical work is never paid twice.
    - Per-call logging is priced at Google's published rates and shown in-app.
-   - **Everything built so far** (208 filings classified, 8 executive bios, research for 36 companies, 20 documents indexed, 34 Surya replies including cache hits) **would cost $0.87 at paid rates**. It's ₹0 billed, on the free tier.
+   - **Everything built so far** (208 filings classified, 8 executive bios, research for 36 companies, 33 documents indexed, 50 Surya replies including cache hits) **would cost $1.04 at paid rates**. It's ₹0 billed, on the free tier.
    - A pipeline run with nothing new costs zero LLM calls.
 8. **Honest limits over fake completeness.** "Quiet day" instead of padding the feed, "pending" when a quarter isn't posted yet, "needs documents" instead of guessing management's guidance.
 
@@ -60,6 +60,7 @@ Next.js PWA (Vercel) ──Bearer JWT──▶ FastAPI (Render) ──▶ Supaba
   - FINN downloads each one with its honest, self-identifying client: directly when the host serves plain clients (company websites, some NSE archives), or from the company's own investor-relations page when the listed link is on BSE.
   - It then indexes the document, rebuilds that company's research and alerts its holders ("TCS Q2 FY27 concall is out. FINN read it…").
   - BSE refuses non-browser clients (90 of 90 links returned 403 on 12 Nov), and we don't imitate browsers. So those reports show under **Research → New reports** and inside Surya as a **one-tap, pre-filled upload** that any logged-in user can complete.
+  - **So for BSE-only reports, a person must download the PDF and add it.** On a paid tier (a licensed BSE/NSE data product or a vendor feed) the same pipeline ingests every report with no human step.
 - **Manual uploads are still possible**, either in-app or dropped into `backend/docs_inbox/<SYMBOL>/` as `AR-2026.pdf` / `CC-2026-11.pdf`.
   - Documents are shared by every user, so **only saved (non-guest) accounts can upload**. One bad upload shouldn't change everyone's research.
   - Uploads run as **background jobs** (read → index → analyse) that the app polls, so a 300-page annual report never hits a request timeout.

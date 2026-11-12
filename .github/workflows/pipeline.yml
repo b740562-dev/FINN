@@ -1,6 +1,7 @@
 name: FINN pipeline
 
-# Ingest EOD prices + new filings -> classify -> results cards -> bios -> alerts.
+# Ingest EOD prices + new filings -> new reports (auto pickup) -> classify ->
+# results cards -> bios -> alerts -> research rebuild.
 # Every 2 hours, 09:30-21:30 IST on weekdays (filings land through the day;
 # EOD prices are final after ~16:00 IST), plus a Saturday morning catch-up.
 # Each stage is incremental: a run with nothing new makes no LLM calls.
@@ -21,7 +22,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45          # report pickup can index a large annual report on the free Gemini tier
     defaults:
       run:
         working-directory: backend
