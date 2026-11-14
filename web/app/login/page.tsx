@@ -85,7 +85,10 @@ export default function Login() {
   return (
     <main className="login">
       {guest && <Link href="/" className="lg-back">‹ Back</Link>}
-      <span className="logo">FINN<b className="amber">.</b></span>
+      <div className="lg-brand">
+        <span className="logo">FINN</span>
+        <span className="lg-quote">Your trusted investment companion</span>
+      </div>
       <h1>{guest ? <>Log in.<br />Keep your portfolio.</> : <>Your portfolio,<br />filtered.</>}</h1>
       {!guest && (
         <div className="feat">
@@ -137,12 +140,10 @@ export default function Login() {
               onClick={() => run("guest", async () => { await signInGuest(); router.replace("/"); })}>
               {busy === "guest" ? "Setting up your demo portfolio…" : "Try as guest →"}
             </button>
-            <div className="note" style={{ marginTop: 0 }}>7-stock demo portfolio · no sign-up</div>
           </>
         )}
         {err && <div className="err" style={{ margin: 0 }}>{err}</div>}
         {devMode && <div className="flag" style={{ textAlign: "center" }}>Local demo mode</div>}
-        <div className="note">EOD data · NSE/BSE filings · not investment advice</div>
       </div>
     </main>
   );
