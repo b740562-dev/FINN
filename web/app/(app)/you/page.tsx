@@ -228,7 +228,11 @@ export default function You() {
           <div className="yrow" key={k}><span className="yi">{ic}</span><span className="yk">{k}</span><span className="yv">{v}</span></div>
         ))}
         <MyDocuments guest={isGuest} />
-        <p className="yfoot">Not investment advice.</p>
+        <div className="disclaimer">
+          <b>Disclaimer</b>
+          <p>FINN summarises publicly available information from stock exchange filings, company disclosures and market data. It is provided for information only and is not investment advice, research or a recommendation to buy, sell or hold any security. Data may be delayed or incomplete. Please do your own research or consult a SEBI-registered investment adviser before investing.</p>
+          <p className="disclaimer-links"><Link href="/terms">Terms of use</Link> · <Link href="/privacy">Privacy policy</Link></p>
+        </div>
       </section>
     </>
   );

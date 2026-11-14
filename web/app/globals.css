@@ -1228,3 +1228,10 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .legal a { color: #c6f45e; }
 .legal-foot { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; }
 .login .lg-legal { display: block; text-align: center; font-size: 12px; color: var(--ink-3, var(--ink-2)); opacity: 0.8; margin-top: 4px; }
+/* Disclaimer under Data sources */
+.disclaimer { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.disclaimer b { display: block; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.disclaimer p { font-size: 11.5px; line-height: 1.55; color: var(--dim); margin: 0; }
+.disclaimer .disclaimer-links { margin-top: 8px; }
+.disclaimer a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+.login .lg-legal a { color: inherit; }

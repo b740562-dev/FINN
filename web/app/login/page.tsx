@@ -198,7 +198,7 @@ export default function Login() {
         )}
         {err && <div className="err" style={{ margin: 0 }}>{err}</div>}
         {devMode && <div className="flag" style={{ textAlign: "center" }}>Local demo mode</div>}
-        <Link href="/privacy" className="lg-legal">Privacy policy</Link>
+        <div className="lg-legal"><Link href="/terms">Terms of use</Link> · <Link href="/privacy">Privacy policy</Link></div>
       </div>
     </main>
   );

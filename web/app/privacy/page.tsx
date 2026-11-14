@@ -41,7 +41,7 @@ export default function Privacy() {
       <h2>Not investment advice</h2>
       <p>FINN summarises public company information. It does not give buy or sell recommendations.</p>
 
-      <p className="legal-foot">Questions: <a href={`mailto:${CONTACT}`}>{CONTACT}</a> · <Link href="/login">Back to FINN</Link></p>
+      <p className="legal-foot">Questions: <a href={`mailto:${CONTACT}`}>{CONTACT}</a> · <Link href="/terms">Terms of use</Link> · <Link href="/login">Back to FINN</Link></p>
     </main>
   );
 }
