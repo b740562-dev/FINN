@@ -13,7 +13,7 @@ FINN is a mobile-first PWA for an investor holding a portfolio of NSE stocks. It
   - Tapping any item opens the full story: the Revenue / EBITDA / PBT / PAT table (QoQ and YoY; lenders get NII and asset quality), the incoming executive's background with sources, and why it ranks where it does.
   - Routine filings fold into one line, colour-coded *Worth a look / Minor / Paperwork*.
   - Alerts fire on end-of-day moves and volume spikes against thresholds the user sets, with the ₹ impact on their position. They're colour-coded by kind: drops red, jumps green, volume spikes amber, filings by importance. A search bar checks **any** NSE company for important filings, before you buy it.
-  - When a company publishes a new concall, presentation or annual report, holders are told once FINN has read it ("Reliance Annual Report FY26 is out. FINN read it and updated the research.").
+  - When a company publishes a new concall, presentation or annual report, **what it says** joins Top news, ranked with the filings: one checked takeaway such as "Q2 FY27 concall: retail loan growth accelerating to 11.2%". It's not a notice that a report exists.
   - A 60-second spoken brief reads the top of the list.
 - **Pull (Research).** Research on any NSE ticker, grounded only in the company's own reported numbers, annual reports and concall transcripts:
   - Snapshot
@@ -77,7 +77,7 @@ FINN is a mobile-first PWA for an investor holding a portfolio of NSE stocks. It
    - The trade-off: unseen tickers get numbers-based research instantly, and document-based sections once their PDFs are in.
 8. **New reports: automatic where the source allows, a person where it doesn't.**
    - Every scheduler run records each company's newly published concall transcripts, presentations and annual reports.
-   - FINN downloads each one with its honest, self-identifying client: directly when the host allows, or from the company's own investor-relations site when the listed link is on BSE. It then indexes the report, rebuilds the research and alerts holders.
+   - FINN downloads each one with its honest, self-identifying client: directly when the host allows, or from the company's own investor-relations site when the listed link is on BSE. It then indexes the report, rebuilds the research, and adds the report's own key takeaway to Top news (numbers checked against the text, dated by publication so old reports never pose as news).
    - First run: of 62 new reports, **13 were read with no human involved** (6 direct, 7 found on company websites: Reliance's and ICICI Bank's annual reports, HDFC Bank's Q2 concall and more).
    - **The rest need a person.** BSE refused all 90 of 90 links I tested, so for BSE-only reports someone must open the original, **download the PDF and add it**. The app makes this as light as possible: the report is listed under Research → New reports and inside Surya with every field pre-filled, so it's one download and one tap, and any logged-in user can do it. Uploads feed a shared library, so guests can't, and an uploader can remove what they added.
    - **On a paid tier this needs no human at all.** A licensed exchange data product (BSE/NSE) or a vendor feed delivers filings and documents through an authorised API, and the same pipeline would index them the moment they're published.

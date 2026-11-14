@@ -10,12 +10,14 @@ presentations, annual reports).
                  company's own investor-relations page first. Downloaded PDFs are
                  indexed, the company's research is rebuilt, and holders get an
                  alert. Anything still out of reach is marked needs_upload and
-                 offered in the app as a one-tap, pre-filled upload.
+                 offered in the app as a one-tap, pre-filled upload. Each report
+                 read enters the feed (Top news) with its own key takeaway.
 
 We never imitate a browser to get past a site's bot protection.
 """
 from __future__ import annotations
 
+import json
 import re
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -164,22 +166,99 @@ def _from_company_site(website: str | None, kind: str, period: date) -> str | No
     return None
 
 
-def _alert_holders(c, symbol: str, label: str, doc_id: int, url: str | None) -> int:
-    c.execute("""insert into public.alerts (user_id, kind, symbol, filing_id, payload, event_date, dedupe_key)
-                 select h.user_id, 'filing', h.symbol, null,
-                        jsonb_build_object('category', 'report', 'materiality', 70,
-                                           'headline', %s::text, 'url', %s::text),
-                        current_date, %s::text
-                 from public.holdings h where h.symbol = %s
-                 on conflict (user_id, dedupe_key) do nothing""",
-              (f"{label} is out. FINN read it and updated the research.", url, f"report:{doc_id}", symbol))
-    return c.rowcount
+# How much a freshly published report matters in the feed (same 0-100 scale as
+# filings; >= 35 makes Top news). A concall carries management's latest view.
+REPORT_MATERIALITY = {"transcript": 55, "annual_report": 50, "presentation": 45}
+REPORT_QUERY = {
+    "transcript": "outlook guidance expect growth margin demand next quarter year",
+    "annual_report": "performance highlights revenue profit growth strategy outlook order book",
+    "presentation": "highlights growth guidance key metrics outlook",
+}
+TAKEAWAY_SCHEMA = {"type": "object", "properties": {"takeaway": {"type": "string"}}, "required": ["takeaway"]}
 
 
-def announce(symbol: str, label: str, document_id: int, url: str | None) -> int:
-    """Tell everyone holding the company that a new report has been read."""
+def _takeaway(symbol: str, kind: str, label: str, doc_id: int) -> str | None:
+    """The single most decision-relevant line from the report itself, using only
+    its own text. Numbers must appear in the excerpts or the line is dropped."""
+    from finn import llm
+    from finn.pull.chat import _BOILER
+    from finn.pull.retrieve import search
+    from finn.push.classify import numbers_grounded
+
+    chunks = [c for c in search(symbol, REPORT_QUERY[kind], k=14, document_ids=[doc_id])
+              if not _BOILER.search(c.content[:600]) and len(c.content) > 200][:6]
+    if not chunks:
+        return None
+    text = "\n\n".join(f"(p.{c.page}) {c.content[:1500]}" for c in chunks)
+    out = llm.generate_json(
+        "report_takeaway",
+        f"Company: {symbol}. Document: {label}.\nEXCERPTS\n{text}\n\n"
+        "Write the ONE most decision-relevant takeaway for an investor, in at most 22 words, plain English. "
+        "Prefer forward-looking guidance or a material change. Use ONLY these excerpts; include a number only "
+        "if it appears in them. No preamble, no company name at the start.",
+        TAKEAWAY_SCHEMA, model=llm.BULK, thinking="low", ref_type="document", ref_id=str(doc_id))
+    line = (out.get("takeaway") or "").strip().rstrip(".") + "."
+    norm = re.sub(r"(?<=\d)\s*,\s*(?=\d{2,3}\b)", ",", text)
+    return line if len(line) > 12 and numbers_grounded(line, norm) else None
+
+
+def publish(symbol: str, kind: str, label: str, document_id: int, url: str | None) -> bool:
+    """Put a newly read report into the feed as a normal item, ranked by how much
+    it matters, with what it actually says. No separate "report is out" alert."""
+    with cursor(commit=False) as c:
+        c.execute("select 1 from public.filings where dedupe_key = %s", (f"report:{document_id}",))
+        if c.fetchone():
+            return False
+        c.execute("select ingested_at, period from public.documents where id = %s", (document_id,))
+        row = c.fetchone()
+    if not row:
+        return False
+    ingested, period = row
+    # Date it by when it was published, so a backlog report never poses as fresh news:
+    # concalls/presentations by their call month; an annual report only counts while it's
+    # the current year's (published within ~7 months of its financial year end).
+    if kind == "annual_report":
+        if period is None or (date.today() - period).days > 215:
+            return False
+        when = ingested
+    elif period is None:
+        when = ingested
+    else:
+        # The exact day the company filed it on the exchange, when FINN has that filing;
+        # otherwise mid-month of the call.
+        pat = "%transcript%" if kind == "transcript" else "%presentation%"
+        with cursor(commit=False) as c:
+            c.execute("""select min(filed_at) from public.filings
+                         where symbol = %s and category is distinct from 'report' and subject ilike %s
+                           and filed_at >= %s::date and filed_at < (%s::date + interval '45 days')""",
+                      (symbol, pat, period, period))
+            exact = c.fetchone()[0]
+        when = exact or datetime(period.year, period.month, 15, 12, tzinfo=timezone.utc)
+    try:
+        line = _takeaway(symbol, kind, label, document_id)
+    except Exception:
+        line = None
+    word = {"transcript": "concall", "annual_report": "annual report", "presentation": "investor presentation"}[kind]
     with cursor() as c:
-        return _alert_holders(c, symbol, f"{symbol} {label}", document_id, url)
+        c.execute("""insert into public.filings (symbol, filed_at, subject, note, url, category, materiality,
+                                                 one_liner, enrichment, classified_by, dedupe_key)
+                     values (%s, %s, %s, null, %s, 'report', %s, %s, %s::jsonb, 'report', %s)
+                     on conflict (dedupe_key) do nothing""",
+                  (symbol, when, f"{label} ({word})", url, REPORT_MATERIALITY[kind],
+                   f"{label}: {line}" if line else None,
+                   json.dumps({"factors": [f"new {word}"], "document_id": document_id, "report_kind": kind}),
+                   f"report:{document_id}"))
+        return c.rowcount > 0
+
+
+def announce(symbol: str, label: str, document_id: int, url: str | None, kind: str | None = None) -> bool:
+    """Kept for the upload path: a user-added report also enters the feed."""
+    with cursor(commit=False) as c:
+        c.execute("select kind, label from public.documents where id = %s", (document_id,))
+        r = c.fetchone()
+    if not r:
+        return False
+    return publish(symbol, kind or r[0], r[1] or label, document_id, url)
 
 
 def fetch_pending(limit: int = PER_RUN, rebuild: bool = True) -> dict:
@@ -194,7 +273,7 @@ def fetch_pending(limit: int = PER_RUN, rebuild: bool = True) -> dict:
                      order by rc.period desc limit %s""", (f"{int(RETRY_AFTER.total_seconds())} seconds", limit))
         todo = c.fetchall()
 
-    stats = {"checked": len(todo), "ingested": 0, "needs_upload": 0, "failed": 0, "alerts": 0}
+    stats = {"checked": len(todo), "ingested": 0, "needs_upload": 0, "failed": 0, "feed": 0}
     touched: set[str] = set()
     for cid, sym, kind, period, label, url, website in todo:
         data, got, via = None, None, None
@@ -228,8 +307,8 @@ def fetch_pending(limit: int = PER_RUN, rebuild: bool = True) -> dict:
             c.execute("""update public.report_candidates set status = 'ingested', via = %s, fetched_url = %s,
                            document_id = %s, last_error = null, updated_at = now() where id = %s""",
                       (via, got, res["document_id"], cid))
-            if res["status"] == "ingested":
-                stats["alerts"] += _alert_holders(c, sym, f"{sym} {label}", res["document_id"], got)
+        if res["status"] == "ingested":
+            stats["feed"] += int(publish(sym, kind, label, res["document_id"], got))
         stats["ingested"] += 1
         touched.add(sym)
         time.sleep(0.5)

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "./auth";
 import { DocUploadForm, type Preset } from "./my-docs";
@@ -35,9 +34,8 @@ export function NewReports() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  if (!items || items.length === 0) return null;
-  const need = items.filter((x) => x.status === "needs_upload");
-  const auto = items.filter((x) => x.status === "ingested");
+  const need = (items ?? []).filter((x) => x.status === "needs_upload");
+  if (need.length === 0) return null;
   const shown = all ? need : need.slice(0, 4);
 
   return (
@@ -45,21 +43,10 @@ export function NewReports() {
       <div className="nr-head">
         <div>
           <h2>New reports</h2>
-          <p>Picked up automatically where the source allows. The rest take one tap.</p>
+          <p>Published lately for your companies. Add one in a tap to update its research.</p>
         </div>
-        <span className="nr-counts">
-          {auto.length > 0 && <span className="ok">✓ {auto.length} read</span>}
-          {need.length > 0 && <span className="todo">{need.length} to add</span>}
-        </span>
+        <span className="nr-counts"><span className="todo">{need.length} to add</span></span>
       </div>
-
-      {auto.slice(0, 3).map((x) => (
-        <Link key={x.id} href={`/research/${x.symbol}`} className="nr-row auto">
-          <span className="nr-tag">{TAG[x.kind]}</span>
-          <span className="nr-info"><b>{x.symbol} <span>{x.label}</span></b><small>✓ Read automatically from {x.fetched_url ? new URL(x.fetched_url).hostname.replace(/^www\./, "") : x.host} · research updated</small></span>
-          <span className="nr-go">›</span>
-        </Link>
-      ))}
 
       {shown.map((x) => (
         <div key={x.id} className="nr-row">
@@ -80,7 +67,7 @@ export function NewReports() {
         <div className="sheet-bg" onClick={() => setAdding(null)} role="dialog" aria-modal aria-label="Add report">
           <div className="sheet sy-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="grab" />
-            <b className="sy-sheet-t">Add {adding.symbol} {items.find((i) => i.url === adding.url)?.label}</b>
+            <b className="sy-sheet-t">Add {adding.symbol} {need.find((i) => i.url === adding.url)?.label}</b>
             <p className="nr-steps">1. <a href={adding.url} target="_blank" rel="noreferrer">Open the original ↗</a> and save the PDF. 2. Pick it below. Everything else is filled in.</p>
             <DocUploadForm guest={guest} initial={adding} onCancel={() => setAdding(null)}
               onUploaded={(r) => {

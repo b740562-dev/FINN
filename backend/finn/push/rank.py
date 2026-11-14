@@ -21,7 +21,7 @@ LABEL = {
     "results": "Results", "M&A": "M&A", "fund_raise": "Fund raise", "management_change": "Management",
     "litigation": "Legal", "insider_trading": "Insider", "earnings_call": "Concall", "investor_meetings":
     "Investor meet", "credit_rating": "Rating", "dividend": "Dividend", "bonus_split": "Bonus/split",
-    "capex": "Capex", "press_release": "Update", "postal_ballot": "Postal ballot", "agm_egm": "AGM/EGM",
+    "capex": "Capex", "press_release": "Update", "report": "Report", "postal_ballot": "Postal ballot", "agm_egm": "AGM/EGM",
     "pledging": "Pledge", "unclassified": "Routine",
 }
 

@@ -139,6 +139,6 @@ We only use sources that serve a plainly identified client. We don't imitate bro
 - **Decision:** automate everything that can be fetched honestly, and turn the rest into a one-tap task. We do not imitate browsers.
   1. **Detect:** ingest records every recent report as a candidate from the screener page it already fetches, so this costs no extra requests.
   2. **Download:** directly if the host allows, else find the same PDF on the company's own investor-relations page, matching document type plus month and year.
-  3. **Index:** then rebuild the research and alert holders.
+  3. **Index:** then rebuild the research, and add the report's key takeaway to Top news as a ranked item: concall 55, annual report 50, presentation 45. The takeaway's numbers must appear in the document, and the item is dated by publication. Revised 14 Nov: no "report is out" alert, because the content is what matters, not the event.
   4. **Otherwise mark it `needs_upload`:** it shows under Research → New reports and in Surya ("Q2 FY27 concall is out but not read yet"), with an upload form pre-filled except for the PDF. Any logged-in user can do it. Uploads settle the matching candidate.
 - **Production path:** a licensed exchange or vendor feed (BSE/NSE data products, or vendors) makes this fully hands-off.
