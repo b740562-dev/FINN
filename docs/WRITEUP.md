@@ -4,8 +4,9 @@
 
 **FINN, your trusted investment companion.** A mobile-first app for an investor who holds NSE stocks. It answers two questions: *what changed that matters to my money?* (push) and *is this company actually doing well?* (pull).
 
-- **App:** https://finn-lake.vercel.app (tap *Try as guest*, no sign-up; installable to the home screen)
+- **App:** https://finn-lake.vercel.app (tap *Try as guest* for no sign-up, or *Continue with Google*; installable to the home screen)
 - **Repo:** https://github.com/b740562-dev/FINN
+- **Privacy policy:** https://finn-lake.vercel.app/privacy
 - **AI build history:** _(Claude Code transcript export)_
 
 It has one opinion about interaction: **the investor's scarce resource is attention, so the home screen shows what changed as pictures and numbers, and every item has to justify its place.** Text is one tap away, never the first thing you see.
@@ -111,8 +112,9 @@ A first-visit tour (four swipeable cards) introduces the four places below; afte
 10. **Guest-first, then Google or a code.**
     - "Try as guest" gets a seeded, fully working account in about 2 seconds with nothing to fill in.
     - Logging in later is one tap with Google, or a 6-digit email code rather than a magic link (no tab switching on a phone).
-    - For a guest, Google or the email is attached to the same account, so their portfolio, alerts and settings come along. Sign-in errors (rate limits, email delivery) are shown in plain words, with the guest route always open.
-    - Row-level security isolates every user.
+    - For a guest, Google or the email is attached to the same account, so their portfolio, alerts and settings come along. If that Google account or email already has a FINN account, they're signed in to it instead. Sign-in errors (rate limits, email delivery) are shown in plain words, with the guest route always open.
+    - The profile fills itself without guessing: Google's name and photo, or, with an email code, only what the address safely gives (a name from `asha.rao@…`, a company from a work domain, a Gravatar photo). Nothing is ever overwritten once the user edits it.
+    - Row-level security isolates every user, and a plain-language privacy policy says what's stored and how to delete it.
 
 ## What I left out, deliberately
 

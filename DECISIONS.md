@@ -3,19 +3,19 @@
 Deadline: **15 Nov 2026** · Budget: **~25–35 focused hours** · Principle: *thin-but-working beats broad-but-broken*
 
 ## 1. Product & interaction model
-- **Home = ranked briefing feed + persistent "Ask FINN" bar.**
+- **Home = ranked briefing feed + persistent "Ask FINN" bar.** *(Revised 12 Nov: the ask bar became Surya, a round "Ask me" button on every screen that opens a full chat.)*
   - Top: window picker (24h default · 7d · 30d · custom) + **"as-of" date** to replay a rich week.
   - Headline: "N things matter today". Material cards first. Routine filings collapse into one "▸ 14 routine filings" row.
   - Every card has a **"why it's here" chip**, e.g. "Results · 8% of your portfolio".
 - **Ask bar → Dossier** for any NSE ticker. It streams in section by section, with follow-up chat underneath.
-- **Visual style: A · Terminal (dark, dense).** Reference: `mockups/home-feed-styles.html`.
+- **Visual style: A · Terminal (dark, dense).** Reference: `mockups/home-feed-styles.html`. *(Revised: the palette moved to deep green with a lime accent (#c6f45e), up #5be38f, down #ff7a6e, Inter for text, to match the FINN logo: three rising bars and a trend line. The logo is the favicon, PWA and Apple icons, share preview, and sits on Today, log-in and the first-visit tour.)*
   - Near-black background (#0a0c0f), cards #11151a with a 1px #1d2128 border.
   - JetBrains Mono for tickers, numbers and labels; Inter for prose. Tabular numerals everywhere.
   - Amber accent (#f0b43c). Green #3ddc84 for up, red #ff6b6b for down.
   - Each card has a colour strip on its left edge for its type: amber = results, blue = management, green = price/volume alert, purple = M&A.
   - "Why it's here" pill on every card. Routine filings collapse into one dashed row.
   - Ask bar is pinned above the tab bar (TODAY · ALERTS · RESEARCH · YOU).
-- **Real user accounts (Supabase Auth): Google sign-in + email magic link.**
+- **Real user accounts (Supabase Auth): Google sign-in + email.** *(Revised: email uses a 6-digit one-time code instead of a magic link; see 12 Nov below. Google went live on 14 Nov.)*
   - Every new account is **seeded with the demo portfolio** + default thresholds, so the feed is full on first open. Each user's edits, alerts and push subscriptions are their own.
   - Postgres Row Level Security scopes user data per account. The FastAPI backend verifies the Supabase JWT on each request.
   - Shared data (prices, filings, extracted results, RAG index, dossiers) is global and cached once for everyone. Only portfolio, settings and alert state are per user.
@@ -54,7 +54,7 @@ Any ticker that fails the data check (yfinance prices / screener transcripts) is
 
 **Ranking score** = category base weight + LLM materiality nudge + the user's chosen "categories I care about" + position weight.
 **Classification:** BSE/NSE's own category/subcategory and keyword rules first. The LLM is called only for ambiguous filings.
-**Delivery:** in-app alerts inbox + **web push** from the PWA (Android works directly; iOS needs Add to Home Screen). Tapping a notification opens the card.
+**Delivery:** in-app alerts inbox + **web push** from the PWA (Android works directly; iOS needs Add to Home Screen). Tapping a notification opens the card. *(Revised: web push left out for time; alerts live in the in-app inbox with an unread badge.)*
 
 ## 3. Pull (all four blocks, built in this order)
 1. **Snapshot**: business (segments, revenue mix) + financial (headline numbers, margins, ratios)
@@ -92,8 +92,8 @@ We only use sources that serve a plainly identified client. We don't imitate bro
 |---|---|
 | Frontend | Next.js PWA on Vercel |
 | Backend | Python FastAPI on Render free tier + keep-warm ping |
-| DB | Supabase Postgres + pgvector (keep-alive ping so the project doesn't pause) |
-| Auth | Supabase Auth: Google OAuth + email magic link + guest (anonymous sign-in), RLS on user tables |
+| DB | Supabase Postgres + pgvector (the 2-hourly pipeline keeps the free project from pausing) |
+| Auth | Supabase Auth: Google OAuth + email one-time code + guest (anonymous sign-in), RLS on user tables |
 | Scheduler | GitHub Actions cron |
 | LLMs | Verified on our key (11 Nov). The 2.5 models are closed to new users, and no Pro text model is available.<br>• Bulk work (classification, one-liners, extraction, quote verification): **`gemini-3.5-flash-lite`**<br>• Reasoning (Promise vs Delivered, Bull/Bear, chat synthesis): **`gemini-3.6-flash`**. Planned as `gemini-3.8-flash`, but on 11 Nov it returned 504s and multi-minute waits on this key, so it is opt-in via `FINN_REASON_MODEL`. `gemini-3.5-flash` is deprecated and Google routes it to 3.6-flash, so we name 3.6 directly.<br>• Automatic fallback on 429/503/504: 3.6-flash → 3.5-flash-lite → 3.1-flash-lite<br>• Paid-tier prices (USD per 1M tokens in/out, until 31 Dec 2026): flash-lite 0.30/2.50, 3.6-flash 0.75/3.75, embedding-2 0.20. Free tier: ₹0.<br>• Embeddings: **`gemini-embedding-2`**, truncated to 768 dims (pgvector HNSW indexes cap at 2000) |
 | DB driver | `pg8000` (pure Python). Windows Smart App Control blocks psycopg's bundled libpq DLL. TLS is always verified against Supabase's CA (`backend/supabase-ca.crt`) |
@@ -110,7 +110,7 @@ We only use sources that serve a plainly identified client. We don't imitate bro
 ## 7. Extras (only after core push + pull work end to end)
 - **Cost & routing meter**: per insight, which model, tokens, ₹ cost, cache hit. *(Revised 14 Nov: removed from the app for everyone, because it's operator information. Costs stay logged in `llm_calls` and readable by admins via `GET /usage`.)*
 - **60-sec audio brief**: browser TTS of today's top items
-- **Voice questions**: hold-to-talk on the ask bar (Web Speech API)
+- **Voice questions**: the mic in Surya records the question and the server transcribes it with `gemini-3.5-flash-lite` (more reliable across phones than the browser's Web Speech API)
 
 ## 8. Rough build plan
 | Day | Focus |
@@ -121,7 +121,8 @@ We only use sources that serve a plainly identified client. We don't imitate bro
 | 14–15 Nov | Extras, polish, phone testing, README, covering-email writeup, export AI build history |
 
 ## 9. Still open
-- [ ] API keys needed: Gemini, Supabase, Tavily (or Brave), Google OAuth client ID (Google Cloud console), VAPID keys for web push (generated locally)
+- [x] API keys: Gemini, Supabase, Tavily, Google OAuth client. *(VAPID keys not needed: web push left out.)*
+- [ ] Concall transcripts for the default holdings published on BSE only: added by hand through Research → New reports until a licensed feed exists.
 
 
 ## Surya chat and email OTP (12 Nov)
@@ -142,3 +143,12 @@ We only use sources that serve a plainly identified client. We don't imitate bro
   3. **Index:** then rebuild the research, and add the report's key takeaway to Top news as a ranked item: concall 55, annual report 50, presentation 45. The takeaway's numbers must appear in the document, and the item is dated by publication. Revised 14 Nov: no "report is out" alert, because the content is what matters, not the event.
   4. **Otherwise mark it `needs_upload`:** it shows under Research → New reports and in Surya ("Q2 FY27 concall is out but not read yet"), with an upload form pre-filled except for the PDF. Any logged-in user can do it. Uploads settle the matching candidate.
 - **Production path:** a licensed exchange or vendor feed (BSE/NSE data products, or vendors) makes this fully hands-off.
+
+## Accounts, profile and polish (14 Nov)
+- **Report alerts → Top news.** A "new report is out, research updated" alert told the investor nothing. Now the report's key takeaway joins Top news, ranked by materiality like any filing, and Research → New reports lists only reports that still need a one-tap upload.
+- **Admin internals out of the app.** The cost and routing meter and *How FINN thinks* were removed for everyone: operator information, not investor information. Costs stay in `llm_calls` and `GET /usage` (admins only); admins just see an Admin badge.
+- **Continue with Google.** One tap, and the profile takes the Google name and photo. A guest links Google to the same account (`linkIdentity`), so the portfolio carries over; if that Google account already has a FINN account, they're signed in to it instead. The button appears only while Google is enabled in Supabase, so it never leads to an error page.
+- **Profile from the email.** With an email code, FINN only knows the address, so it fills what it safely can: a name from addresses like `asha.rao@…`, a company from work domains (free-mail and college domains skipped), and the email's Gravatar photo if one exists (looked up by a SHA-256 hash). It only fills empty fields, only until the user first saves the profile, and never guesses from addresses like `b740562@gmail.com`.
+- **Privacy policy** at `/privacy`, linked from log-in: what's stored, where, Gemini processing, deletion on request. Google's consent screen points to it.
+- **First-run polish:** a four-card tour on the first visit; Today opens on 7 days when the last 24 hours were quiet; Surya's starter questions come from the user's own holdings; log-in leads with "Invest with clarity" and three short features; sign-in errors (rate limits, email delivery) are shown in plain words.
+- **Resilience:** when the free embedding quota runs out, document search falls back to Postgres full-text search instead of failing the chat.

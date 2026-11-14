@@ -15,11 +15,11 @@ A mobile-first agent for an investor running a portfolio of NSE stocks. It does 
 
 | Surface | What it does |
 |---|---|
-| **Today** | Ranked digest for 24h / 7d / 30d, plus **as-of replay** of any past date. Results cards show Revenue / EBITDA / PBT / PAT QoQ & YoY, margins in bp, and lenders get NII + NPAs. A management change shows the incoming person's bio with sources. Routine filings are collapsed. **60-second audio brief.** |
+| **Today** | Ranked digest for 24h / 7d / 30d (opens on 7d if the last day was quiet), plus **as-of replay** of any past date. New concalls, presentations and annual reports join the list as their key takeaway. Results cards show Revenue / EBITDA / PBT / PAT QoQ & YoY, margins in bp, and lenders get NII + NPAs. A management change shows the incoming person's bio with sources. Routine filings are collapsed. **60-second audio brief.** |
 | **Alerts** | EOD price-move and volume-spike alerts against *your* thresholds (global + per-stock), with ₹ impact on your position. Filing alerts for the categories you choose. |
-| **Research** | Any NSE ticker (fetched on demand). Four sections: Snapshot, Promise vs Delivered, Health check (trajectory, balance sheet, cash quality), Bull vs Bear. Every claim has a tap-to-source citation. Follow-up Q&A over the company's own documents. |
-| **Ask Surya** | The round "Ask me" button (bottom left, on every screen) opens a full-screen chat ("Hello, I’m Surya, your investment guide…"). General guidance (debt, diversification, rebalancing) is free-form; **anything about a specific company's data comes only from verified material**: its own documents in FINN (annual reports, concalls, presentations, user uploads), its exchange-reported financials, and the Promise vs Delivered tracker. Every such claim is cited inline and its numbers are checked against the cited text; otherwise Surya says it doesn't have it and offers 📎 to add the matching report, which it reads in the background. |
-| **You** | Define "unusual" (sliders, filing categories). Edit holdings and profile. **Log in with a 6-digit email code** (OTP); a guest's portfolio comes along, and verified accounts show a ✓ next to the name. Admins (`ADMIN_EMAILS`) get an Admin badge; cost and routing figures stay in the backend (see below). |
+| **Research** | Any NSE ticker (fetched on demand). Four sections: Snapshot, Promise vs Delivered, Health check (trajectory, balance sheet, cash quality), Bull vs Bear. Every claim has a tap-to-source citation. Follow-up Q&A over the company's own documents. Holdings are tagged Important / Volatile / Promising / Steady, and **New reports** lists published reports waiting for a one-tap upload. |
+| **Ask Surya** | The round "Ask me" button (bottom left, on every screen) opens a full-screen chat ("Hello, I’m Surya, your investment guide…"). General guidance (debt, diversification, rebalancing) is free-form; **anything about a specific company's data comes only from verified material**: its own documents in FINN (annual reports, concalls, presentations, user uploads), its exchange-reported financials, and the Promise vs Delivered tracker. Every such claim is cited inline and its numbers are checked against the cited text; otherwise Surya says it doesn't have it and offers 📎 to add the matching report, which it reads in the background. Type or speak (transcribed on the server); suggested questions come from your own holdings. |
+| **You** | Define "unusual" (sliders, filing categories). Edit holdings and profile. **Log in with Google or a 6-digit email code** (OTP); a guest's portfolio comes along, and verified accounts show a ✓ next to the name. The profile fills itself: name and photo from Google, or a name (and company, for work addresses) read from the email, never overwriting what the user typed. Admins (`ADMIN_EMAILS`) get an Admin badge; cost and routing figures stay in the backend (see below). |
 
 ## Admins vs everyone else
 
@@ -32,21 +32,22 @@ A mobile-first agent for an investor running a portfolio of NSE stocks. It does 
 | Model names on research and Surya answers | shown | removed by the API | removed by the API |
 | `GET /usage` (cost & routing figures, last N days) | allowed | **403** | **403** |
 
-- **Who is an admin:** anyone whose email is listed in the API's `ADMIN_EMAILS` setting (comma-separated, e.g. `you@example.com, teammate@example.com`), **after logging in with that email via the 6-digit code**. A guest or an unverified account is never an admin.
+- **Who is an admin:** anyone whose email is listed in the API's `ADMIN_EMAILS` setting (comma-separated, e.g. `you@example.com, teammate@example.com`), **after logging in with that email** (Google or the 6-digit code). A guest or an unverified account is never an admin.
 - **Enforced on the server:** the API decides, so changing the app can't reveal internals. `/usage` refuses non-admins, and model names are stripped from responses before they leave the server.
 - **Reading the cost figures:** as an admin, call `GET https://<api>/usage?days=7` with your session token, or query `llm_calls` in Supabase. The totals in this README and the write-up come from there.
-- **To add or remove an admin:** edit `ADMIN_EMAILS` on Render and save. It applies after the automatic redeploy, in about a minute.
+- **To add or remove an admin:** edit `ADMIN_EMAILS` on Render and save. It applies after the automatic redeploy, in a few minutes on Render's free tier.
 
 ## Architecture
 
 ```
-            ┌──────────────── GitHub Actions (cron, 2-hourly on market days) ────────────────┐
-            │ ingest (yfinance EOD + screener.in) → classify → results cards → bios → alerts │
-            └──────────────────────────────────────┬──────────────────────────────────────────┘
+            ┌──────────────────── GitHub Actions (cron, 2-hourly on market days) ────────────────────┐
+            │ ingest (yfinance EOD + screener.in) → new reports → classify → results cards → bios    │
+            │ → alerts → research rebuild                                                            │
+            └──────────────────────────────────────┬─────────────────────────────────────────────────┘
                                                    ▼
 Next.js PWA (Vercel) ──Bearer JWT──▶ FastAPI (Render) ──▶ Supabase Postgres + pgvector (RLS)
    Today · Alerts · Research · You        │      │                     ▲
-   supabase-js auth (guest/email)         │      └── Gemini (routed) ──┘ llm_cache + llm_calls
+   supabase-js auth (guest/email/Google)  │      └── Gemini (routed) ──┘ llm_cache + llm_calls
                                           └── Tavily (exec bios only, push side)
 ```
 
@@ -65,7 +66,7 @@ Next.js PWA (Vercel) ──Bearer JWT──▶ FastAPI (Render) ──▶ Supaba
 7. **Cost.**
    - Two model tiers: `gemini-3.5-flash-lite` for bulk, `gemini-3.6-flash` only for reasoning, with automatic fallback when a model is overloaded. `gemini-3.8-flash` is opt-in via `FINN_REASON_MODEL`, because it was timing out on our key.
    - A Postgres response cache means identical work is never paid twice.
-   - Per-call logging is priced at Google's published rates and shown in-app.
+   - Per-call logging is priced at Google's published rates and kept in the backend (`llm_calls`, `GET /usage` for admins), not shown in the app.
    - **Everything built so far** (208 filings classified, 8 executive bios, research for 36 companies, 33 documents indexed, 50 Surya replies including cache hits) **would cost $1.04 at paid rates**. It's ₹0 billed, on the free tier.
    - A pipeline run with nothing new costs zero LLM calls.
 8. **Honest limits over fake completeness.** "Quiet day" instead of padding the feed, "pending" when a quarter isn't posted yet, "needs documents" instead of guessing management's guidance.
@@ -110,13 +111,19 @@ npm install
 npm run dev
 ```
 
+**Local demo mode** (for networks that block Supabase): `FINN_DEV_AUTH=1` on the API and `NEXT_PUBLIC_DEV_AUTH=1` on the web app sign you in without Supabase, from localhost only. Add `FINN_DEV_MEMBER=1` / `NEXT_PUBLIC_DEV_MEMBER=1` to demo a logged-in account and `FINN_DEV_ADMIN=1` for admin. Never set these on Vercel or Render.
+
 Checks: `scripts/check_services.py` (Gemini + DB), `scripts/check_auth_seed.py` (guest sign-up → seeding → RLS), `scripts/check_api.py` (every endpoint, throwaway guest), `scripts/check_research.py` (research sections), `scripts/check_uploads.py` (guest block, background ingest job, duplicates; in-process, no Supabase call), `scripts/digest_preview.py 7` (print a digest).
 
 ## Deploy
 
 1. **API → Render:** New → Blueprint → this repo (`render.yaml`). Enter the secrets. Set `FRONTEND_ORIGINS` to the Vercel URL and `ADMIN_EMAILS` to the account(s) that may see internals.
-2. **Web → Vercel:** import repo, root directory `web/`, env `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL` (Render URL). Add the Vercel URL to Supabase → Authentication → URL configuration.
-3. **Scheduler → GitHub Actions:** repo secrets `DATABASE_URL`, `GEMINI_API_KEY`, `TAVILY_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`; repo variable `API_URL` (Render URL) for the keep-warm ping.
+2. **Web → Vercel:** import repo, root directory `web/`, env `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL` (Render URL).
+3. **Sign-in → Supabase Authentication:**
+   - **URL configuration:** Site URL = the Vercel URL; add `<vercel-url>/**` to the redirect URLs.
+   - **Email codes:** custom SMTP (e.g. a Gmail app password on `smtp.gmail.com:587`), and the Magic Link, Confirm signup and Change Email Address templates must include `{{ .Token }}`. Raise the email rate limit.
+   - **Google:** create a Web OAuth client in Google Cloud (redirect URI `https://<project>.supabase.co/auth/v1/callback`), paste its ID and secret into Providers → Google, and turn on **Allow manual linking** so guests keep their portfolio. The app shows the Google button only while the provider is on (`NEXT_PUBLIC_GOOGLE_AUTH=0` hides it). Google's consent screen points to the app's `/privacy` page.
+4. **Scheduler → GitHub Actions:** repo secrets `DATABASE_URL`, `GEMINI_API_KEY`, `TAVILY_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`; repo variable `API_URL` (Render URL) for the keep-warm ping. The scheduled run also keeps the free Supabase project from pausing.
 
 ## Deliberately left out
 
