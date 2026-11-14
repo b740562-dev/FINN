@@ -77,7 +77,7 @@ export default function EditProfile() {
 
         <section className="panel">
           <h3>Basics</h3>
-          <label className="pf-f"><span>Full name</span>
+          <label className="pf-f"><span>Full name{!guest && profile && !profile.updated_at && (profile.full_name || profile.work_company) && <em className="pf-hint">Filled in from your email · edit anytime</em>}</span>
             <input className="txt" value={f.full_name ?? ""} onChange={(e) => set("full_name", e.target.value)} placeholder="Your name" maxLength={80} autoComplete="name" /></label>
           <div className="pf-f"><span>Gender</span>
             <div className="chips">{GENDERS.map(([v, l]) => (

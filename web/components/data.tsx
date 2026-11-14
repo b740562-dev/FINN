@@ -101,7 +101,37 @@ export function Face({ profile, email, guest }: { profile: Profile | null; email
       </svg>
     );
   }
-  return <>{initialsOf(profile, email, guest)}</>;
+  return <EmailPhoto email={email} fallback={initialsOf(profile, email, guest)} />;
+}
+
+/** The public photo tied to an email (Gravatar, looked up by a SHA-256 hash, so
+ *  the address itself never leaves the app). Initials until it loads, and for
+ *  good if the email has no photo. */
+function EmailPhoto({ email, fallback }: { email: string | null | undefined; fallback: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+  useEffect(() => {
+    setOk(false);
+    setSrc(null);
+    const e = email?.trim().toLowerCase();
+    if (!e || !globalThis.crypto?.subtle) return;
+    let live = true;
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(e)).then((buf) => {
+      const hex = Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+      if (live) setSrc(`https://gravatar.com/avatar/${hex}?s=160&d=404`);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [email]);
+  return (
+    <>
+      {!ok && fallback}
+      {src && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="face-img" src={src} alt="" referrerPolicy="no-referrer" style={ok ? undefined : { display: "none" }}
+          onLoad={() => setOk(true)} onError={() => setSrc(null)} />
+      )}
+    </>
+  );
 }
 
 type AuthUser = { is_anonymous?: boolean; email?: string | null; email_confirmed_at?: string | null } | undefined;

@@ -142,7 +142,60 @@ class ProfileIn(BaseModel):
     bio: str | None = Field(None, max_length=280)
 
 
+FREE_MAIL = {"gmail", "googlemail", "yahoo", "ymail", "rocketmail", "outlook", "hotmail", "live", "msn", "icloud",
+             "me", "mac", "aol", "proton", "protonmail", "pm", "zoho", "zohomail", "rediffmail", "rediff", "gmx", "mail",
+             "yandex", "tutanota", "tuta", "hey", "fastmail", "inbox", "duck", "example"}
+ROLE_WORDS = {"noreply", "no", "reply", "admin", "info", "contact", "hello", "support", "mail", "team", "office", "sales",
+              "test", "demo", "user", "finn", "official", "accounts", "billing", "hr", "jobs", "careers", "help", "me", "the"}
+
+
+def _guess_from_email(email: str) -> dict:
+    """Best-effort profile basics from an address alone: 'asha.rao@tata.com' ->
+    name 'Asha Rao', company 'Tata'. Returns only what it is confident about."""
+    import re
+    local, _, domain = email.lower().partition("@")
+    local = local.split("+")[0]
+    out: dict = {}
+    words = [re.sub(r"\d+", "", w) for w in re.split(r"[._\-]+", local)]
+    words = [w for w in words if w]
+    if 1 <= len(words) <= 3 and all(w.isalpha() and len(w) <= 20 for w in words) and len(words[0]) >= 2 \
+            and not any(w in ROLE_WORDS for w in words):
+        out["full_name"] = " ".join(w.capitalize() for w in words)
+    labels = [x for x in domain.split(".") if x]
+    if len(labels) >= 2 and not re.search(r"\.(edu|ac\.[a-z]{2}|edu\.[a-z]{2}|gov|gov\.[a-z]{2}|local|localhost|test|invalid)$", domain):
+        labels = labels[:-1]
+        if len(labels) > 1 and labels[-1] in {"co", "com", "org", "net"}:
+            labels = labels[:-1]
+        org = labels[-1]
+        if org.isalpha() and org not in FREE_MAIL and len(org) >= 2:
+            out["work_company"] = org.upper() if len(org) <= 4 else org.capitalize()
+    return out
+
+
+def _autofill_profile(user: User) -> list[str]:
+    """First visit with a real email: fill the name (and company, for work
+    addresses) if the user has never edited their profile. Never overwrites."""
+    if user.is_anonymous or not user.email:
+        return []
+    guess = _guess_from_email(user.email)
+    if not guess:
+        return []
+    with cursor() as c:
+        c.execute("select full_name, work_company from public.profiles where user_id = %s and updated_at is null",
+                  (user.id,))
+        r = c.fetchone()
+        if not r:
+            return []
+        todo = {k: v for k, v, cur in (("full_name", guess.get("full_name"), r[0]),
+                                       ("work_company", guess.get("work_company"), r[1])) if v and not cur}
+        if todo:
+            c.execute(f"update public.profiles set {', '.join(f'{k} = %s' for k in todo)} where user_id = %s",
+                      (*todo.values(), user.id))
+    return list(todo)
+
+
 def _profile(user: User) -> dict:
+    _autofill_profile(user)
     with cursor(commit=False) as c:
         c.execute(f"select {', '.join(PROFILE_FIELDS)}, created_at, updated_at from public.profiles where user_id = %s",
                   (user.id,))
