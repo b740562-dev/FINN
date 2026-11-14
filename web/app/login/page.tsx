@@ -6,8 +6,11 @@ import { useRouter } from "next/navigation";
 import { type OtpKind, useAuth } from "@/components/auth";
 import { devModeAvailable } from "@/lib/devauth";
 import { LogoMark } from "@/components/logo";
+import { googleEnabled } from "@/lib/supabase";
 
-const GOOGLE = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
+// The Google button shows once Google is switched on in Supabase.
+// NEXT_PUBLIC_GOOGLE_AUTH=0 hides it regardless.
+const GOOGLE_OFF = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "0";
 const RESEND_AFTER = 45; // seconds
 
 const FEATURES: { title: string; icon: React.ReactNode }[] = [
@@ -77,7 +80,9 @@ export default function Login() {
 
   const guest = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous);
 
+  const [google, setGoogle] = useState(false);
   useEffect(() => setDevMode(devModeAvailable()), []);
+  useEffect(() => { if (!GOOGLE_OFF) googleEnabled().then(setGoogle); }, []);
   // Back from Google with an error (cancelled, or the provider isn't set up).
   useEffect(() => {
     const q = new URLSearchParams(window.location.hash.slice(1) + "&" + window.location.search.slice(1));
@@ -144,7 +149,7 @@ export default function Login() {
       )}
 
       <div className="actions">
-        {GOOGLE && !kind ? (
+        {google && !kind ? (
           <>
             <button className="btn block g-btn" disabled={!!busy} onClick={() => run("google", signInGoogle)}>
               <GoogleG />{busy === "google" ? "Opening Google…" : "Continue with Google"}

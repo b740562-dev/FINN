@@ -14,6 +14,20 @@ function supabaseUrl(): string {
   return `${window.location.origin}/sb`;
 }
 
+/** Which sign-in methods are switched on in Supabase (public endpoint). */
+export async function googleEnabled(): Promise<boolean> {
+  try {
+    const r = await fetch(`${supabaseUrl()}/auth/v1/settings`, {
+      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string },
+    });
+    if (!r.ok) return false;
+    const d = (await r.json()) as { external?: { google?: boolean } };
+    return Boolean(d.external?.google);
+  } catch {
+    return false;
+  }
+}
+
 export function supabase(): SupabaseClient {
   if (!client) {
     client = createClient(supabaseUrl(), process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string, {
