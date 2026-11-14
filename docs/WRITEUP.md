@@ -7,7 +7,7 @@
 - **App:** https://finn-lake.vercel.app (tap *Try as guest* for no sign-up, or *Continue with Google*; installable to the home screen)
 - **Repo:** https://github.com/b740562-dev/FINN
 - **Privacy policy:** https://finn-lake.vercel.app/privacy
-- **AI build history:** _(Claude Code transcript export)_
+- **AI build history:** [Claude Code transcript exports (Google Drive)](https://drive.google.com/drive/folders/19HHuMHoBANV9AafT-QEO9J-40Ma-Cbtd?usp=sharing): the full build session and the logo design session
 
 It has one opinion about interaction: **the investor's scarce resource is attention, so the home screen shows what changed as pictures and numbers, and every item has to justify its place.** Text is one tap away, never the first thing you see.
 
