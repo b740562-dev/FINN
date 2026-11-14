@@ -76,7 +76,8 @@ def _portfolio(uid: str) -> dict:
                )
                select h.symbol, co.name, co.sector, h.quantity, h.weight,
                       max(close) filter (where rn = 1), max(close) filter (where rn = 2),
-                      max(date) filter (where rn = 1)
+                      max(date) filter (where rn = 1),
+                      (select count(*) from public.documents d where d.symbol = h.symbol)
                from public.holdings h
                join public.companies co using (symbol)
                left join last2 l on l.symbol = h.symbol and l.rn <= 2
@@ -87,7 +88,7 @@ def _portfolio(uid: str) -> dict:
         rows = c.fetchall()
     items, total, day = [], 0.0, 0.0
     as_of = None
-    for sym, name, sector, qty, w, close, prev, d in rows:
+    for sym, name, sector, qty, w, close, prev, d, ndocs in rows:
         qty = float(qty) if qty is not None else 0.0
         close = float(close) if close is not None else None
         prev = float(prev) if prev is not None else None
@@ -98,7 +99,8 @@ def _portfolio(uid: str) -> dict:
         as_of = max(as_of, d) if as_of and d else (d or as_of)
         items.append({"symbol": sym, "name": name, "sector": sector, "quantity": qty, "close": close,
                       "prev_close": prev, "change_pct": round((close / prev - 1) * 100, 2) if close and prev else None,
-                      "value": round(value), "day_pnl": round(pnl), "target_weight": float(w) if w is not None else None})
+                      "value": round(value), "day_pnl": round(pnl), "target_weight": float(w) if w is not None else None,
+                      "documents": int(ndocs or 0)})
     for it in items:
         it["weight"] = round(it["value"] / total * 100, 2) if total else (it["target_weight"] or 0)
     items.sort(key=lambda x: -x["value"])

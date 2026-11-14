@@ -17,6 +17,9 @@ function friendlyAuthError(e: unknown, step: string, guest: boolean): string {
   if (err.status === 429 || m.includes("rate limit") || err.code === "over_email_send_rate_limit") {
     return `Too many code emails right now. Try again in a few minutes, or ${stay}.`;
   }
+  if (m.includes("error sending") || m.includes("smtp") || m.includes("email provider")) {
+    return `Email log-in is temporarily unavailable. Please ${stay} for now.`;
+  }
   if (step === "verify" && (m.includes("expired") || m.includes("invalid") || m.includes("token"))) {
     return "That code is wrong or has expired. Check the latest email, or tap Resend code.";
   }

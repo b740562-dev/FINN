@@ -32,7 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!ready || !session) {
     return (
       <div className="shell">
-        <div className="topbar"><div className="brand"><span className="logo">FINN<b>.</b></span></div></div>
+        <div className="topbar"><div className="brand"><span className="logo">FINN</span></div></div>
         <div className="skel" style={{ marginTop: 16 }} />
         <div className="skel" />
       </div>

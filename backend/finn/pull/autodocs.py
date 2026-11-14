@@ -199,7 +199,16 @@ def _takeaway(symbol: str, kind: str, label: str, doc_id: int) -> str | None:
         TAKEAWAY_SCHEMA, model=llm.BULK, thinking="low", ref_type="document", ref_id=str(doc_id))
     line = (out.get("takeaway") or "").strip().rstrip(".") + "."
     norm = re.sub(r"(?<=\d)\s*,\s*(?=\d{2,3}\b)", ",", text)
-    return line if len(line) > 12 and numbers_grounded(line, norm) else None
+    return fix_rupee(line) if len(line) > 12 and numbers_grounded(line, norm) else None
+
+
+# Many Indian annual reports set ₹ in a custom font that extracts as "H" or "`"
+# ("H 11,75,919 crore"). Restore it, but only right before an amount with a unit.
+_RUPEE_GLYPH = re.compile(r"(?<![A-Za-z])[H`]\s?(?=\d[\d,]*(?:\.\d+)?\s*(?:crore|cr|lakh|bn|billion|million|mn)\b)", re.I)
+
+
+def fix_rupee(s: str) -> str:
+    return _RUPEE_GLYPH.sub("₹", s)
 
 
 def publish(symbol: str, kind: str, label: str, document_id: int, url: str | None) -> bool:

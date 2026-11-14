@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { Citation } from "@/lib/types";
 import { useAuth } from "@/components/auth";
+import { useData } from "@/components/data";
 import { Cited, useCiteSheet } from "@/components/research";
 import { DocUploadForm, type Preset, type Uploaded } from "@/components/my-docs";
 import { MAX_SECONDS, type Recording, startRecording, voiceSupported } from "@/lib/voice";
@@ -12,12 +13,21 @@ import { downloadMarkdown, printPdf } from "@/lib/chat-export";
 import { chatKey } from "@/lib/chat-store";
 
 const GREETING = "Hello, I’m Surya, your investment guide. What decision can I help you with today?";
-const STARTERS = [
-  "How do I judge if a company has too much debt?",
-  "Did Titan hit its revenue guidance?",
-  "What is BEL's order book?",
-  "When should I rebalance my portfolio?",
-];
+const GENERAL = ["How do I judge if a company has too much debt?", "When should I rebalance my portfolio?"];
+const FALLBACK = ["What is BEL's order book?", "Did Titan hit its revenue guidance?"];
+
+const short = (name: string) => name.replace(/\s+(Ltd|Limited|Industries|Company|Corporation)\.?$/i, "").trim();
+
+/** Starter questions about the user's own holdings: the biggest one FINN has
+ *  reports for, and a balance-sheet check (reported numbers cover every company). */
+function startersFor(holdings: { name: string; weight: number; documents?: number }[] | undefined): string[] {
+  if (!holdings?.length) return [...FALLBACK, ...GENERAL];
+  const byWeight = [...holdings].sort((a, b) => b.weight - a.weight);
+  const withDocs = byWeight.find((h) => (h.documents ?? 0) > 0);
+  const a = withDocs ?? byWeight[0];
+  const b = byWeight.find((h) => h !== a) ?? a;
+  return [`What were the highlights of ${short(a.name)}'s latest quarter?`, `How healthy is ${short(b.name)}'s balance sheet?`, ...GENERAL];
+}
 const STAGE: Record<string, string> = { queued: "Queued", reading: "Reading the PDF", indexing: "Indexing passages", analysing: "Analysing" };
 
 type Co = { symbol: string; name: string; documents: string[] };
@@ -69,6 +79,8 @@ function sourceLabel(c: Citation) {
 export default function Surya() {
   const router = useRouter();
   const { session } = useAuth();
+  const { me } = useData();
+  const starters = startersFor(me?.holdings);
   const guest = Boolean((session?.user as { is_anonymous?: boolean } | undefined)?.is_anonymous);
   // The open conversation: this user, this browser session only (cleared on every log-in / sign-out).
   const store = chatKey(session?.user?.id);
@@ -276,7 +288,7 @@ export default function Surya() {
         </div>
         {msgs.length === 0 && (
           <div className="sy-starters">
-            {STARTERS.map((s) => <button key={s} onClick={() => send(s)}>{s}</button>)}
+            {starters.map((s) => <button key={s} onClick={() => send(s)}>{s}</button>)}
           </div>
         )}
 

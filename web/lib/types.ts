@@ -9,6 +9,7 @@ export type Holding = {
   value: number;
   day_pnl: number;
   weight: number;
+  documents?: number;     // reports FINN has read for this company
 };
 
 export type Profile = {

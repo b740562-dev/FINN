@@ -12,6 +12,7 @@ import { NewsRow, StoryRail, useNewsSheet } from "@/components/news";
 import { BriefButton, briefScript } from "@/components/brief";
 import { PortfolioChart } from "@/components/portfolio-chart";
 import { ProfileButton } from "@/components/profile-menu";
+import { Tour } from "@/components/tour";
 
 const WINDOWS = [
   { key: "24h", label: "24H", spoken: "last 24 hours" },
@@ -28,11 +29,13 @@ export default function Today() {
   const [digest, setDigest] = useState<Digest | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Only an explicit choice sticks; otherwise an empty 24H opens on 7D (never a blank first look).
+  const [chosen, setChosen] = useState(false);
 
   useEffect(() => {
     try {
       const w = localStorage.getItem("finn.window");
-      if (w === "24h" || w === "7d" || w === "30d") setWin(w);
+      if (w === "24h" || w === "7d" || w === "30d") { setWin(w); setChosen(true); }
     } catch {}
   }, []);
 
@@ -43,14 +46,19 @@ export default function Today() {
     const qs = new URLSearchParams({ window: win });
     if (asOf) qs.set("as_of", asOf);
     api<Digest>(`/digest?${qs}`)
-      .then((d) => { if (alive) { setDigest(d); setErr(null); } })
+      .then((d) => {
+        if (!alive) return;
+        if (!chosen && !asOf && win === "24h" && d.matters.length === 0) { setWin("7d"); return; }
+        setDigest(d); setErr(null);
+      })
       .catch((e) => alive && setErr(e.message))
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
-  }, [win, asOf, bootstrapped]);
+  }, [win, asOf, bootstrapped, chosen]);
 
   function pick(w: (typeof WINDOWS)[number]["key"]) {
     setWin(w);
+    setChosen(true);
     try { localStorage.setItem("finn.window", w); } catch {}
   }
 
@@ -65,10 +73,11 @@ export default function Today() {
 
   return (
     <>
+      <Tour />
       <header className="topbar">
         <ProfileButton />
         <div className="brand">
-          <span className="logo">FINN<b>.</b></span>
+          <span className="logo">FINN</span>
           <span className="when-col">
             {guest ? (
               <Link href="/login" className="login-pill">Log in</Link>
