@@ -1,3 +1,5 @@
+<p align="center"><img src="web/public/logo.svg" width="96" alt="FINN logo"></p>
+
 # FINN: Financial Investment Agent
 
 A mobile-first agent for an investor running a portfolio of NSE stocks. It does two jobs:

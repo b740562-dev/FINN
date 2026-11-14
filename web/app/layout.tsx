@@ -12,7 +12,21 @@ export const metadata: Metadata = {
   description: "Your portfolio's filter: what changed, why it matters, and research grounded in primary sources.",
   applicationName: "FINN",
   appleWebApp: { capable: true, title: "FINN", statusBarStyle: "black-translucent" },
-  icons: { apple: "/apple-touch-icon.png" },
+  icons: {
+    icon: [
+      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/favicon-48.png", sizes: "48x48", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "FINN · Your trusted investment companion",
+    description: "What changed in your portfolio, why it matters, and research grounded in the companies' own reports.",
+    siteName: "FINN",
+    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "FINN" }],
+    type: "website",
+  },
+  twitter: { card: "summary", title: "FINN · Your trusted investment companion", images: ["/icon-512.png"] },
 };
 
 export const viewport: Viewport = {

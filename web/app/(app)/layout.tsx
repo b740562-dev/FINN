@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth";
 import { DataProvider } from "@/components/data";
 import { AskBar } from "@/components/ask-bar";
 import { Tabs } from "@/components/tabs";
+import { Logo } from "@/components/logo";
 
 /** The floating Ask-me button and the tab bar. Reads the URL, so it lives in
  *  its own Suspense boundary (the page itself can still prerender). The Surya
@@ -32,7 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!ready || !session) {
     return (
       <div className="shell">
-        <div className="topbar"><div className="brand"><span className="logo">FINN</span></div></div>
+        <div className="topbar"><div className="brand"><Logo size={28} /></div></div>
         <div className="skel" style={{ marginTop: 16 }} />
         <div className="skel" />
       </div>

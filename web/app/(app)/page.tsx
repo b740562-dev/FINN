@@ -13,6 +13,7 @@ import { BriefButton, briefScript } from "@/components/brief";
 import { PortfolioChart } from "@/components/portfolio-chart";
 import { ProfileButton } from "@/components/profile-menu";
 import { Tour } from "@/components/tour";
+import { Logo } from "@/components/logo";
 
 const WINDOWS = [
   { key: "24h", label: "24H", spoken: "last 24 hours" },
@@ -77,7 +78,7 @@ export default function Today() {
       <header className="topbar">
         <ProfileButton />
         <div className="brand">
-          <span className="logo">FINN</span>
+          <Logo size={28} />
           <span className="when-col">
             {guest ? (
               <Link href="/login" className="login-pill">Log in</Link>

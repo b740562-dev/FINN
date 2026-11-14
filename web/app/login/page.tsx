@@ -5,9 +5,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type OtpKind, useAuth } from "@/components/auth";
 import { devModeAvailable } from "@/lib/devauth";
+import { LogoMark } from "@/components/logo";
 
 const GOOGLE = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
 const RESEND_AFTER = 45; // seconds
+
+const FEATURES: { title: string; icon: React.ReactNode }[] = [
+  {
+    title: "Key news",
+    icon: <path d="M3 3v18h18M7 15l4-4 3 3 5-6" />,
+  },
+  {
+    title: "Smart alerts",
+    icon: <><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" /></>,
+  },
+  {
+    title: "Cited research",
+    icon: <><path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3Z" /><path d="m8.5 12 2.5 2.5 4.5-5" /></>,
+  },
+];
 
 /** Supabase's auth errors, in plain words. Unknown errors keep their own text. */
 function friendlyAuthError(e: unknown, step: string, guest: boolean): string {
@@ -89,16 +105,22 @@ export default function Login() {
     <main className="login">
       {guest && <Link href="/" className="lg-back">‹ Back</Link>}
       <div className="lg-brand">
-        <span className="logo">FINN</span>
+        <span className="lg-row"><LogoMark size={44} /><span className="logo">FINN</span></span>
         <span className="lg-quote">Your trusted investment companion</span>
       </div>
-      <h1>{guest ? <>Log in.<br />Keep your portfolio.</> : <>Your portfolio,<br />filtered.</>}</h1>
+      <h1>{guest ? <>Log in<br />Keep your portfolio</> : <>Invest with<br />clarity</>}</h1>
       {!guest && (
-        <div className="feat">
-          <div><b>◎</b><span>What matters</span></div>
-          <div><b>⚡</b><span>Your alerts</span></div>
-          <div><b>❝</b><span>Cited research</span></div>
-        </div>
+        <ul className="feat">
+          {FEATURES.map((f) => (
+            <li key={f.title}>
+              <span className="feat-ic">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden>{f.icon}</svg>
+              </span>
+              <b className="feat-tx">{f.title}</b>
+            </li>
+          ))}
+        </ul>
       )}
 
       <div className="actions">

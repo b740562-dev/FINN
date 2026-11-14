@@ -1,3 +1,5 @@
+<p align="center"><img src="../web/public/logo.svg" width="80" alt="FINN logo"></p>
+
 # FINN: submission write-up (draft for the covering email)
 
 ## What I built

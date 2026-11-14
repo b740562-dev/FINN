@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { LogoMark } from "./logo";
 
 const KEY = "finn.tour.v1";
 
@@ -66,7 +67,7 @@ export function Tour() {
           touch.current = null;
         }}>
         <button className="tour-skip" onClick={done}>Skip</button>
-        <div className="tour-kicker">How FINN works · {i + 1}/{STEPS.length}</div>
+        <div className="tour-kicker"><LogoMark size={18} /> How FINN works · {i + 1}/{STEPS.length}</div>
         <span className={`tour-ic ${s.tone}`}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{s.icon}</svg>
         </span>
