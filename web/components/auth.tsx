@@ -46,6 +46,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     const sb = supabase();
+    // Back from Google as a guest whose Google account already has a FINN
+    // account: sign in to that account instead (as the email flow does).
+    const back = new URLSearchParams(window.location.hash.slice(1) + "&" + window.location.search.slice(1));
+    if (back.get("error_code") === "identity_already_exists") {
+      history.replaceState(null, "", window.location.pathname);
+      sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/login` } });
+      return;
+    }
     sb.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setReady(true);
@@ -92,10 +100,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInGoogle = useCallback(async () => {
-    const { error } = await supabase().auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
-    });
+    if (devModeAvailable()) {
+      throw new Error("Google sign-in runs on the live app. Local demo mode doesn't reach Supabase.");
+    }
+    clearChatState();
+    const sb = supabase();
+    const options = { redirectTo: `${window.location.origin}/login` };
+    const { data } = await sb.auth.getSession();
+    if (data.session?.user.is_anonymous) {
+      // Guest: attach Google to this same account, so the portfolio comes along.
+      const { error } = await sb.auth.linkIdentity({ provider: "google", options });
+      if (!error) return;
+      // Linking is switched off in Supabase: fall back to a normal Google sign-in.
+    }
+    const { error } = await sb.auth.signInWithOAuth({ provider: "google", options });
     if (error) throw error;
   }, []);
 

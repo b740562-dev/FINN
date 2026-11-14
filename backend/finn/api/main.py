@@ -178,6 +178,8 @@ def _autofill_profile(user: User) -> list[str]:
     if user.is_anonymous or not user.email:
         return []
     guess = _guess_from_email(user.email)
+    if user.name:                      # Google (or another provider) gave the real name
+        guess["full_name"] = user.name
     if not guess:
         return []
     with cursor() as c:
@@ -205,7 +207,7 @@ def _profile(user: User) -> dict:
     d = dict(zip(PROFILE_FIELDS + ("created_at", "updated_at"), r))
     d["created_at"] = d["created_at"].isoformat() if d["created_at"] else None
     d["updated_at"] = d["updated_at"].isoformat() if d["updated_at"] else None
-    return {**d, "email": user.email, "is_anonymous": user.is_anonymous}
+    return {**d, "email": user.email, "is_anonymous": user.is_anonymous, "avatar_url": user.avatar}
 
 
 @app.get("/profile")

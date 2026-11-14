@@ -24,6 +24,8 @@ class User:
     id: str
     is_anonymous: bool
     email: str | None
+    name: str | None = None      # from the sign-in provider (Google), when there is one
+    avatar: str | None = None
 
     @property
     def is_admin(self) -> bool:
@@ -50,7 +52,11 @@ def _verify(token: str) -> User:
     if r.status_code != 200:
         raise HTTPException(401, "Invalid or expired session")
     u = r.json()
-    return User(id=u["id"], is_anonymous=bool(u.get("is_anonymous")), email=u.get("email"))
+    md = u.get("user_metadata") or {}
+    name = (md.get("full_name") or md.get("name") or "").strip() or None
+    avatar = md.get("avatar_url") or md.get("picture") or None
+    return User(id=u["id"], is_anonymous=bool(u.get("is_anonymous")), email=u.get("email"),
+                name=name[:80] if name else None, avatar=avatar if avatar and avatar.startswith("https://") else None)
 
 
 # ---- Local demo mode (development only) ------------------------------------

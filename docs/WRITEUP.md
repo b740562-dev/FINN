@@ -41,7 +41,7 @@ A first-visit tour (four swipeable cards) introduces the four places below; afte
   - **Anything about a specific company's data comes only from verified material.** An answer with figures that pass the checks shows a green **✓ Verified** line, linking each source to the original (the exchange PDF opened at the cited page, or the company's reported financials).
   - When the material doesn't exist, Surya says so. If a newer report is out but not yet read, it names it ("SBIN's Q2 FY27 concall is out…") and offers a one-tap, pre-filled upload.
   - Logged-in users keep their **chat history** across devices. Any conversation **exports** to PDF or Markdown with its sources. Every new login starts with a fresh chat.
-- **You.** Portfolio (defaults to India's seven largest listed companies; **Reset** zeroes the quantities but keeps the companies), alert sensitivity, *Your documents* (add an annual report, concall or presentation, record where it came from, remove it later), and a profile. Guests get a working account in one tap; **logging in uses a 6-digit email code**, keeps the guest's portfolio, and shows a verified ✓.
+- **You.** Portfolio (defaults to India's seven largest listed companies; **Reset** zeroes the quantities but keeps the companies), alert sensitivity, *Your documents* (add an annual report, concall or presentation, record where it came from, remove it later), and a profile. Guests get a working account in one tap; **logging in uses Google or a 6-digit email code**, keeps the guest's portfolio, and shows a verified ✓. The profile fills itself: name and photo from Google, or a name (and company, for work addresses) read from the email, never overwriting what the user typed.
 
 ## How it runs
 
@@ -108,17 +108,16 @@ A first-visit tour (four swipeable cards) introduces the four places below; afte
    - Some Indian ISPs block `*.supabase.co` and render.com. The browser reaches Supabase only through the app's own domain (a server-side rewrite), so sign-in works on those networks.
    - Research pages are pre-built after each refresh, so nobody waits on a cold model call, and uploads run as background jobs.
    - When the free-tier embedding quota runs out, document search falls back to Postgres full-text search instead of failing the chat.
-10. **Guest-first, then a code.**
+10. **Guest-first, then Google or a code.**
     - "Try as guest" gets a seeded, fully working account in about 2 seconds with nothing to fill in.
-    - Logging in later is a 6-digit email code rather than a magic link (no tab switching on a phone).
-    - For a guest, the email is attached to the same account, so their portfolio, alerts and settings come along. Sign-in errors (rate limits, email delivery) are shown in plain words, with the guest route always open.
+    - Logging in later is one tap with Google, or a 6-digit email code rather than a magic link (no tab switching on a phone).
+    - For a guest, Google or the email is attached to the same account, so their portfolio, alerts and settings come along. Sign-in errors (rate limits, email delivery) are shown in plain words, with the guest route always open.
     - Row-level security isolates every user.
 
 ## What I left out, deliberately
 
 - Intraday data and news, outside the brief's spirit of filtering noise.
 - Web push notifications: alerts live in an in-app inbox.
-- Google sign-in, which is wired but off until OAuth credentials exist.
 - Imitating a browser to download from exchange hosts that block scripted clients. BSE-only reports are added by a person until a licensed feed replaces that step.
 - Model and cost internals in the app. They're logged for the operator, not shown to investors.
 - Buy/sell calls. Surya helps the user think about a decision but never gives a recommendation or price target.

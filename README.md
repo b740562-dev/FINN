@@ -120,6 +120,6 @@ Checks: `scripts/check_services.py` (Gemini + DB), `scripts/check_auth_seed.py` 
 
 ## Deliberately left out
 
-Intraday data, broker/news feeds, web push notifications (alerts land in the in-app inbox), Google sign-in (wired, behind `NEXT_PUBLIC_GOOGLE_AUTH=1`), and automated PDF fetching from exchange hosts that block scripted clients.
+Intraday data, broker/news feeds, web push notifications (alerts land in the in-app inbox), and automated PDF fetching from exchange hosts that block scripted clients.
 
 See [DECISIONS.md](DECISIONS.md) for the full decision log and [docs/WRITEUP.md](docs/WRITEUP.md) for the submission write-up.

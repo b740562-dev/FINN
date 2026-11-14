@@ -25,6 +25,8 @@ export type Profile = {
   is_anonymous: boolean;
   created_at: string | null;
   updated_at: string | null;
+  /** Photo from the sign-in provider (Google), when there is one. */
+  avatar_url?: string | null;
 };
 
 export type Rules = {

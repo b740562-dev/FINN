@@ -101,18 +101,19 @@ export function Face({ profile, email, guest }: { profile: Profile | null; email
       </svg>
     );
   }
-  return <EmailPhoto email={email} fallback={initialsOf(profile, email, guest)} />;
+  return <EmailPhoto email={email} photo={profile?.avatar_url} fallback={initialsOf(profile, email, guest)} />;
 }
 
-/** The public photo tied to an email (Gravatar, looked up by a SHA-256 hash, so
+/** The account's photo: Google's when signed in with Google, else the public photo tied to the email (Gravatar, looked up by a SHA-256 hash, so
  *  the address itself never leaves the app). Initials until it loads, and for
  *  good if the email has no photo. */
-function EmailPhoto({ email, fallback }: { email: string | null | undefined; fallback: string }) {
+function EmailPhoto({ email, photo, fallback }: { email: string | null | undefined; photo?: string | null; fallback: string }) {
   const [src, setSrc] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   useEffect(() => {
     setOk(false);
     setSrc(null);
+    if (photo) { setSrc(photo); return; }            // Google's own photo wins
     const e = email?.trim().toLowerCase();
     if (!e || !globalThis.crypto?.subtle) return;
     let live = true;
@@ -121,7 +122,7 @@ function EmailPhoto({ email, fallback }: { email: string | null | undefined; fal
       if (live) setSrc(`https://gravatar.com/avatar/${hex}?s=160&d=404`);
     }).catch(() => {});
     return () => { live = false; };
-  }, [email]);
+  }, [email, photo]);
   return (
     <>
       {!ok && fallback}

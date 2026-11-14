@@ -13,7 +13,7 @@ import { ProfileButton } from "@/components/profile-menu";
 const GENDERS: [Profile["gender"], string][] = [["female", "Female"], ["male", "Male"], ["non_binary", "Non-binary"], ["prefer_not_to_say", "Prefer not to say"]];
 const EXPERIENCE: [Profile["experience"], string][] = [["new", "New"], ["intermediate", "1–3 yrs"], ["experienced", "3–10 yrs"], ["professional", "Professional"]];
 
-type Form = Omit<Profile, "email" | "is_anonymous" | "created_at" | "updated_at">;
+type Form = Omit<Profile, "email" | "is_anonymous" | "created_at" | "updated_at" | "avatar_url">;
 const EMPTY: Form = { full_name: "", gender: null, work_company: "", work_role: "", education: "", city: "", experience: null, bio: "" };
 
 export default function EditProfile() {
@@ -29,8 +29,8 @@ export default function EditProfile() {
 
   useEffect(() => {
     if (profile) {
-      const { email: _e, is_anonymous: _a, created_at: _c, updated_at: _u, ...rest } = profile;
-      void _e; void _a; void _c; void _u;
+      const { email: _e, is_anonymous: _a, created_at: _c, updated_at: _u, avatar_url: _p, ...rest } = profile;
+      void _e; void _a; void _c; void _u; void _p;
       setF({ ...EMPTY, ...Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, v ?? (k === "gender" || k === "experience" ? null : "")])) } as Form);
     }
   }, [profile]);

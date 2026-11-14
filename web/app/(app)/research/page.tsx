@@ -126,7 +126,7 @@ function Index() {
     <>
       <header className="topbar">
         <ProfileButton />
-        <div className="brand"><span className="logo">RESEARCH</span><span className="when">primary sources only</span></div>
+        <div className="brand"><span className="logo">RESEARCH</span></div>
         <form style={{ marginTop: 10 }} onSubmit={(e) => { e.preventDefault(); if (q.trim()) router.push(`/research/${encodeURIComponent(q.trim().toUpperCase())}`); }}>
           <input className="txt" placeholder="Any NSE ticker · TCS, HAL, DMART" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
