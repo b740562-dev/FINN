@@ -247,7 +247,6 @@ export default function Surya() {
         <SunMark />
         <div className="sy-title">
           <b>Surya</b>
-          <small>Investment guide · facts only from verified documents</small>
         </div>
         <button className="sy-new" onClick={openHistory} aria-label="Chat history" title="Chat history">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
