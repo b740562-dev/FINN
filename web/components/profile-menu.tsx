@@ -102,7 +102,6 @@ export function ProfileButton() {
               <button onClick={() => go("/you#portfolio")}><span>◫</span>Portfolio &amp; holdings</button>
               <button onClick={() => go("/you#rules")}><span>⚡</span>Alert rules</button>
               <button onClick={() => go("/alerts")}><span>◉</span>Alerts{unread > 0 && <em>{unread}</em>}</button>
-              {me?.user.is_admin && <button onClick={() => go("/you#usage")}><span>⚙</span>How FINN thinks<em>admin</em></button>}
               <button onClick={() => go("/you#sources")}><span>ⓘ</span>Data sources &amp; your documents</button>
             </nav>
 

@@ -108,7 +108,7 @@ We only use sources that serve a plainly identified client. We don't imitate bro
 - Free-tier rate limits → cache everything, precompute the demo set, queue LLM calls.
 
 ## 7. Extras (only after core push + pull work end to end)
-- **Cost & routing meter**: per insight, which model, tokens, ₹ cost, cache hit
+- **Cost & routing meter**: per insight, which model, tokens, ₹ cost, cache hit. *(Revised 14 Nov: removed from the app for everyone, because it's operator information. Costs stay logged in `llm_calls` and readable by admins via `GET /usage`.)*
 - **60-sec audio brief**: browser TTS of today's top items
 - **Voice questions**: hold-to-talk on the ask bar (Web Speech API)
 

@@ -9,7 +9,6 @@ import { useAuth } from "@/components/auth";
 import { DEFAULT_NAME, Face, isVerified, profileCompleteness, useData, VerifiedTick } from "@/components/data";
 import { Ring } from "@/components/ring";
 import { MyDocuments } from "@/components/my-docs";
-import { UsagePanel } from "@/components/usage";
 import { ProfileButton } from "@/components/profile-menu";
 
 const CAT_LABEL: Record<string, string> = {
@@ -222,11 +221,6 @@ export default function You() {
         {holdMsg && <div className="ok">{holdMsg}</div>}
       </section>
 
-      {me?.user.is_admin && (
-        <>
-          <section className="panel ysec" id="usage"><h2>How FINN thinks<span>admin</span></h2><UsagePanel /></section>
-        </>
-      )}
 
       <section className="panel ysec" id="sources">
         <h2>Data sources</h2>
