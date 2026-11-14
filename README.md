@@ -129,4 +129,4 @@ Checks: `scripts/check_services.py` (Gemini + DB), `scripts/check_auth_seed.py` 
 
 Intraday data, broker/news feeds, web push notifications (alerts land in the in-app inbox), and automated PDF fetching from exchange hosts that block scripted clients.
 
-See [DECISIONS.md](DECISIONS.md) for the full decision log, [docs/WRITEUP.md](docs/WRITEUP.md) for the submission write-up, and [docs/build-history](docs/build-history/) for the AI build history.
+See [DECISIONS.md](DECISIONS.md) for the full decision log and [docs/WRITEUP.md](docs/WRITEUP.md) for the submission write-up.
