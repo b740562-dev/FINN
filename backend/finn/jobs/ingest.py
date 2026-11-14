@@ -105,7 +105,7 @@ def load_prices(symbols: list[str], period: str = "6mo") -> int:
 
 def main(symbols: list[str]) -> None:
     t0 = time.time()
-    if symbols == all_symbols():
+    if set(all_symbols()) <= set(symbols):    # a full run (the scheduler adds users' own holdings too)
         load_demo_portfolio()
         print("demo_portfolio: loaded", len(PORTFOLIO))
     for i, sym in enumerate(symbols):

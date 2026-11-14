@@ -24,7 +24,34 @@ Deadline: **15 Nov 2026** · Budget: **~25–35 focused hours** · Principle: *t
 - **Holdings carry quantity/weight.** This feeds the ranking and lets cards show impact lines like "this move cost you ₹1.2L / −0.8%".
 
 ## 1b. Demo portfolio (seeded into every new account)
-**Revised 12 Nov: India's seven largest listed companies**, the names every investor knows, weighted by market cap like an index (market caps from screener, 12 Nov 2026).
+**Revised 15 Nov: 20 companies, as the brief asks for 15–20.** A large-cap core of household names plus mid and small caps, across 18 sectors (market caps from screener, 14 Nov 2026). Weighted by size tier rather than pure market cap, so the smaller names still move the book.
+
+| Ticker | Sector | Size | Weight |
+|---|---|---|---|
+| RELIANCE | Conglomerate | Large | 11% |
+| HDFCBANK | Private bank | Large | 10% |
+| BHARTIARTL | Telecom | Large | 8% |
+| ICICIBANK | Private bank | Large | 8% |
+| TCS | IT services | Large | 7% |
+| SBIN | PSU bank | Large | 6% |
+| ITC | FMCG | Large | 5% |
+| LT | Capital goods | Large | 5% |
+| BAJFINANCE | NBFC | Large | 5% |
+| SUNPHARMA | Pharma | Large | 4% |
+| MARUTI | Auto | Large | 4% |
+| ETERNAL | Internet / delivery | Large | 4% |
+| TRENT | Retail | Large | 4% |
+| TATASTEEL | Metals | Large | 3% |
+| POLYCAB | Cables | Large | 3% |
+| DIXON | Electronics manufacturing | Mid | 3% |
+| PERSISTENT | IT services | Mid | 3% |
+| SUZLON | Renewables | Mid | 3% |
+| CDSL | Capital markets | Small | 2% |
+| IEX | Power exchange | Small | 2% |
+
+*(The 12 Nov version below, India's seven largest companies, read well but fell short of the brief's 15–20 and had no mid or small caps.)*
+
+**Earlier, 12 Nov: India's seven largest listed companies**, the names every investor knows, weighted by market cap like an index (market caps from screener, 12 Nov 2026).
 
 | Ticker | Sector | Market cap (₹ cr) | Weight |
 |---|---|---|---|

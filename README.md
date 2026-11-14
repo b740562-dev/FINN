@@ -52,7 +52,7 @@ Next.js PWA (Vercel) ──Bearer JWT──▶ FastAPI (Render) ──▶ Supaba
 ```
 
 - **Backend** `backend/finn/`: `sources/` (prices, screener), `push/` (classify, rank, results, bios, alerts), `pull/` (docs, retrieve, sections, ask, cite), `api/` (FastAPI), `jobs/` (ingest, pipeline), `llm.py` (routing + cache + cost log).
-- **DB** `backend/sql/00x_*.sql`: shared market data (read-only to users) + per-user tables, all behind row-level security. A trigger seeds every new account, guests included, with the demo portfolio.
+- **DB** `backend/sql/00x_*.sql`: shared market data (read-only to users) + per-user tables, all behind row-level security. A trigger seeds every new account, guests included, with the demo portfolio: 20 companies across 18 sectors and all three sizes (`backend/finn/universe.py`), plus a 4-company research set (BEL, Titan, Asian Paints, KPIT).
 - **Frontend** `web/`: Next.js 16 App Router, client-rendered behind auth, hand-written "Terminal" design system (`app/globals.css`).
 
 ## Judgment calls (the short version)

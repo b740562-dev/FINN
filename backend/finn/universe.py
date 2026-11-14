@@ -16,16 +16,31 @@ class Holding:
 
 NOTIONAL_BOOK_INR = 50_00_000  # ₹50L
 
-# India's seven largest listed companies by market value (screener market caps,
-# 12 Nov 2026): the household names. Weighted by market cap, like an index.
+# 20 companies across 18 sectors and all three sizes (market caps from screener,
+# 14 Nov 2026): a large-cap core of household names, plus mid and small caps
+# that move differently and file differently. Weighted by size tier, not pure
+# market cap, so the smaller names still matter to the book.
 PORTFOLIO: list[Holding] = [
-    Holding("RELIANCE", "Conglomerate", "Large", 22.5),
-    Holding("BHARTIARTL", "Telecom", "Large", 16.5),
-    Holding("HDFCBANK", "Private bank", "Large", 15.5),
-    Holding("ICICIBANK", "Private bank", "Large", 14.0),
-    Holding("SBIN", "PSU bank", "Large", 12.0),
-    Holding("TCS", "IT services", "Large", 11.0),
-    Holding("BAJFINANCE", "NBFC", "Large", 8.5),
+    Holding("RELIANCE", "Conglomerate", "Large", 11.0),
+    Holding("HDFCBANK", "Private bank", "Large", 10.0),
+    Holding("BHARTIARTL", "Telecom", "Large", 8.0),
+    Holding("ICICIBANK", "Private bank", "Large", 8.0),
+    Holding("TCS", "IT services", "Large", 7.0),
+    Holding("SBIN", "PSU bank", "Large", 6.0),
+    Holding("ITC", "FMCG", "Large", 5.0),
+    Holding("LT", "Capital goods", "Large", 5.0),
+    Holding("BAJFINANCE", "NBFC", "Large", 5.0),
+    Holding("SUNPHARMA", "Pharma", "Large", 4.0),
+    Holding("MARUTI", "Auto", "Large", 4.0),
+    Holding("ETERNAL", "Internet / delivery", "Large", 4.0),
+    Holding("TRENT", "Retail", "Large", 4.0),
+    Holding("TATASTEEL", "Metals", "Large", 3.0),
+    Holding("POLYCAB", "Cables", "Large", 3.0),
+    Holding("DIXON", "Electronics manufacturing", "Mid", 3.0),
+    Holding("PERSISTENT", "IT services", "Mid", 3.0),
+    Holding("SUZLON", "Renewables", "Mid", 3.0),
+    Holding("CDSL", "Capital markets", "Small", 2.0),
+    Holding("IEX", "Power exchange", "Small", 2.0),
 ]
 
 # HAL was swapped for BEL (same sector): HAL had 1 transcript in 13 months and
