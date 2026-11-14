@@ -39,6 +39,37 @@ function toneOf(a: Alert): Tone {
   return (a.payload.change_pct ?? 0) < 0 ? "drop" : "jump";
 }
 
+/** Results headlines ("Revenue +23% YoY; PAT +29% YoY; NII +23% YoY") become bold
+ *  metric tiles like price alerts; other headlines get their numbers in bold. */
+const METRIC = /([A-Za-z][A-Za-z &/.-]{1,24}?)\s+([+\-−]?\d[\d,]*(?:\.\d+)?%)\s*(YoY|QoQ)?/g;
+
+function FilingHeadline({ text }: { text: string }) {
+  const parts = text.split(/;\s*/);
+  const tiles = parts.map((seg) => {
+    METRIC.lastIndex = 0;
+    const m = METRIC.exec(seg.trim());
+    return m && m.index === 0 ? { k: m[1].trim(), v: m[2].replace("−", "-"), basis: m[3] ?? "" } : null;
+  });
+  if (tiles.length >= 2 && tiles.every(Boolean)) {
+    return (
+      <div className="metrics num">
+        {tiles.map((t) => {
+          const n = parseFloat(t!.v);
+          return (
+            <div key={t!.k}>
+              {t!.k.toUpperCase()}{t!.basis ? ` · ${t!.basis}` : ""}
+              <b className={n > 0 ? "up" : n < 0 ? "dn" : ""}>{n > 0 ? "▲" : n < 0 ? "▼" : ""}{t!.v.replace(/^[+-]/, "")}</b>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  // Anything else: keep the sentence, make its numbers stand out.
+  const bits = text.split(/(₹?\s?[+\-−]?\d[\d,]*(?:\.\d+)?\s?(?:%|cr|crore|lakh|bn|mn|x|×)?)/g);
+  return <div className="head">{bits.map((b, i) => (/\d/.test(b) ? <b key={i} className="hl-num">{b}</b> : b))}</div>;
+}
+
 function AlertCard({ a }: { a: Alert }) {
   const p = a.payload;
   const t = toneOf(a);
@@ -50,7 +81,7 @@ function AlertCard({ a }: { a: Alert }) {
           <span><Link className="tk" href={`/research/${a.symbol}`}>{a.symbol}</Link><span className="tag">{CAT[p.category ?? ""] ?? p.category}</span></span>
           <span className={`al-pill ${t}`}>{t === "high" ? "High" : t === "med" ? "Medium" : "Low"}</span>
         </div>
-        <div className="head">{p.headline}</div>
+        <FilingHeadline text={p.headline ?? ""} />
         <div className="foot">
           <span className="why">{a.name} · materiality {p.materiality}</span>
           {p.url && <a className="link" href={p.url} target="_blank" rel="noreferrer">{p.category === "report" ? "OPEN REPORT ↗" : "OPEN FILING ↗"}</a>}

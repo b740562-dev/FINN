@@ -1152,3 +1152,8 @@ nav.tabs .badge { background: #fff; color: #0a1a10; }
 .lg-brand { display: flex; flex-direction: column; gap: 6px; }
 .lg-quote { font-size: 14px; font-weight: 700; letter-spacing: 0.01em; color: var(--amber);
   text-shadow: 0 0 18px rgba(198,244,94,0.35); }
+
+/* Filing alerts: numbers bold like price alerts */
+.metrics b.up { color: var(--up); }
+.metrics b.dn { color: var(--dn); }
+.head .hl-num { font-family: var(--mono); font-weight: 800; color: var(--ink); }
