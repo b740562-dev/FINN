@@ -177,7 +177,8 @@ export function DocUploadForm({ guest, initial, onCancel, onUploaded }: {
 }
 
 /** "Your documents": add an annual report / transcript / presentation for any
- *  company (with where it came from), watch it being read, remove it later. */
+ *  company (with where it came from), watch it being read, and take it off your
+ *  list later. Removing never takes the report out of FINN's shared research. */
 export function MyDocuments({ guest }: { guest: boolean }) {
   const [mine, setMine] = useState<Mine | null>(null);
   const [open, setOpen] = useState(false);
@@ -202,6 +203,7 @@ export function MyDocuments({ guest }: { guest: boolean }) {
     try {
       await api(`/documents/${id}`, { method: "DELETE" });
       await load();
+      setMsg({ ok: true, text: "Removed from your list. The report stays in FINN's research, so Surya and everyone's research keep using it." });
     } catch (er) {
       setMsg({ ok: false, text: (er as Error).message });
     }

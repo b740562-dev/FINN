@@ -238,7 +238,8 @@ def my_documents(user: User = Depends(current_user)):
         c.execute("""select d.id, d.symbol, co.name, d.kind, d.period, d.label, d.filename, d.source, d.source_url,
                             d.pages, d.pages_kept, d.chunks, d.ingested_at
                      from public.documents d left join public.companies co on co.symbol = d.symbol
-                     where d.uploaded_by = %s::uuid order by d.ingested_at desc limit 100""", (user.id,))
+                     where d.uploaded_by = %s::uuid and d.hidden_from_uploader_at is null
+                     order by d.ingested_at desc limit 100""", (user.id,))
         docs = [{"id": i, "symbol": sym, "company": name, "kind": k, "period": str(p) if p else None, "label": lb,
                  "filename": fn, "source": src, "source_label": DOC_SOURCES.get(src or ""), "source_url": url,
                  "pages": pg, "pages_kept": pk, "chunks": ch, "added_at": ts.isoformat()}
@@ -270,21 +271,30 @@ def dismiss_job(job_id: int, user: User = Depends(current_user)):
 
 
 @docs_router.delete("/{doc_id}")
-def remove_document(doc_id: int, background: BackgroundTasks, user: User = Depends(current_user)):
-    """Remove a document you added. Its passages leave the index and the
-    company's research is rebuilt without it."""
+def remove_document(doc_id: int, background: BackgroundTasks, purge: bool = False,
+                    user: User = Depends(current_user)):
+    """Take a document off your list. The report stays in the shared library, so
+    research and Surya keep using it for everyone. An admin can pass purge=true
+    to delete a bad upload outright (its passages leave the index and the
+    company's research is rebuilt without it)."""
     with cursor() as c:
         c.execute("select symbol, uploaded_by::text from public.documents where id = %s", (doc_id,))
         row = c.fetchone()
         if not row:
             raise HTTPException(404, "No such document")
         sym, owner = row
-        if owner != user.id and not user.is_admin:
-            raise HTTPException(403, "You can only remove documents you added")
-        c.execute("delete from public.documents where id = %s", (doc_id,))   # chunks cascade
+        if purge:
+            if not user.is_admin:
+                raise HTTPException(403, "Only admins can delete a document from the library")
+            c.execute("delete from public.documents where id = %s", (doc_id,))   # chunks cascade
+        else:
+            if owner != user.id and not user.is_admin:
+                raise HTTPException(403, "You can only remove documents you added")
+            c.execute("update public.documents set hidden_from_uploader_at = now() where id = %s", (doc_id,))
+            return {"status": "hidden", "id": doc_id, "symbol": sym}
     S.invalidate(sym)
     background.add_task(_rebuild, sym)
-    return {"status": "removed", "id": doc_id, "symbol": sym}
+    return {"status": "deleted", "id": doc_id, "symbol": sym}
 
 
 # ---- new reports: picked up automatically, or waiting for a one-tap upload ----

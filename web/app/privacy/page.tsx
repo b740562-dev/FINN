@@ -34,7 +34,7 @@ export default function Privacy() {
 
       <h2>Your choices</h2>
       <ul>
-        <li>Edit or clear your profile at any time under <i>Edit profile</i>, and remove documents you uploaded under <i>Your documents</i>.</li>
+        <li>Edit or clear your profile at any time under <i>Edit profile</i>, and take documents you uploaded off your list under <i>Your documents</i>. Uploaded reports are public company documents, so they stay in FINN&apos;s shared research.</li>
         <li>To delete your account and everything linked to it, email <a href={`mailto:${CONTACT}`}>{CONTACT}</a> from the address you signed in with.</li>
       </ul>
 

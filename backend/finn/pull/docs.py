@@ -154,6 +154,10 @@ def ingest_pdf(symbol: str, data: bytes, kind: str, period: date, filename: str 
         c.execute("select id, chunks from public.documents where sha256 = %s", (sha,))
         hit = c.fetchone()
     if hit:
+        if uploaded_by:   # the uploader adding it again puts it back on their list
+            with cursor() as c:
+                c.execute("update public.documents set hidden_from_uploader_at = null "
+                          "where id = %s and uploaded_by = %s::uuid", (hit[0], uploaded_by))
         return {"status": "duplicate", "document_id": hit[0], "chunks": hit[1]}
 
     t0 = time.time()
