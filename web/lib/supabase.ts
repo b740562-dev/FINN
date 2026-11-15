@@ -14,6 +14,19 @@ function supabaseUrl(): string {
   return `${window.location.origin}/sb`;
 }
 
+/** Back from Google with "this email already has an account" (Supabase uses
+ *  several codes for it, depending on how the account was first created). */
+export function accountTaken(q: URLSearchParams): boolean {
+  const code = q.get("error_code") ?? "";
+  const desc = q.get("error_description") ?? "";
+  return ["identity_already_exists", "email_exists", "user_already_exists"].includes(code)
+    || /already (been )?registered|already exists|already linked/i.test(desc);
+}
+
+/** Set while FINN retries a Google sign-in into the existing account, so a
+ *  second failure is shown instead of looping. */
+export const GOOGLE_RETRY = "finn.googleRetry";
+
 /** Which sign-in methods are switched on in Supabase (public endpoint). */
 export async function googleEnabled(): Promise<boolean> {
   try {

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { type OtpKind, useAuth } from "@/components/auth";
 import { devModeAvailable } from "@/lib/devauth";
 import { LogoMark } from "@/components/logo";
-import { googleEnabled } from "@/lib/supabase";
+import { accountTaken, GOOGLE_RETRY, googleEnabled } from "@/lib/supabase";
 
 // The Google button shows once Google is switched on in Supabase.
 // NEXT_PUBLIC_GOOGLE_AUTH=0 hides it regardless.
@@ -87,7 +87,15 @@ export default function Login() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.hash.slice(1) + "&" + window.location.search.slice(1));
     const d = q.get("error_description");
-    if (!d || q.get("error_code") === "identity_already_exists") return;
+    if (!d) return;
+    if (accountTaken(q)) {
+      let retried = false;
+      try { retried = Boolean(sessionStorage.getItem(GOOGLE_RETRY)); sessionStorage.removeItem(GOOGLE_RETRY); } catch {}
+      if (!retried) return;            // the auth provider signs in to the existing account
+      setErr("This Google account's email already has a FINN account. Log in with an email code to that address instead.");
+      history.replaceState(null, "", window.location.pathname);
+      return;
+    }
     setErr(/denied|cancel/i.test(d) ? "Google sign-in was cancelled." : `Google sign-in didn't finish: ${d.replace(/\+/g, " ")}`);
     history.replaceState(null, "", window.location.pathname);
   }, []);

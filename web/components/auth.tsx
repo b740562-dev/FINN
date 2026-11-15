@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+import { accountTaken, GOOGLE_RETRY, supabase } from "@/lib/supabase";
 import { DEV_TOKEN, DEV_USER_ID, devModeAvailable, devSignedIn, setDevSignedIn } from "@/lib/devauth";
 import { clearChatState } from "@/lib/chat-store";
 
@@ -49,12 +49,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Back from Google as a guest whose Google account already has a FINN
     // account: sign in to that account instead (as the email flow does).
     const back = new URLSearchParams(window.location.hash.slice(1) + "&" + window.location.search.slice(1));
-    if (back.get("error_code") === "identity_already_exists") {
+    let retried = false;
+    try { retried = Boolean(sessionStorage.getItem(GOOGLE_RETRY)); } catch {}
+    if (accountTaken(back) && !retried) {
+      try { sessionStorage.setItem(GOOGLE_RETRY, "1"); } catch {}
       history.replaceState(null, "", window.location.pathname);
       sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/login` } });
       return;
     }
     sb.auth.getSession().then(({ data }) => {
+      if (data.session && !data.session.user.is_anonymous) {
+        try { sessionStorage.removeItem(GOOGLE_RETRY); } catch {}
+      }
       setSession(data.session);
       setReady(true);
     });
