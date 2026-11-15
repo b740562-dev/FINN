@@ -145,7 +145,7 @@ def _vec_literal(v: list[float]) -> str:
 
 def ingest_pdf(symbol: str, data: bytes, kind: str, period: date, filename: str = "",
                uploaded_by: str | None = None, progress=None, source: str | None = None,
-               source_url: str | None = None) -> dict:
+               source_url: str | None = None, added_from: str | None = None) -> dict:
     """progress(stage, info) is called as work advances: 'reading', 'indexing'."""
     if kind not in DOC_KINDS:
         raise ValueError("kind must be one of " + ", ".join(DOC_KINDS))
@@ -177,10 +177,10 @@ def ingest_pdf(symbol: str, data: bytes, kind: str, period: date, filename: str 
 
     with cursor() as c:
         c.execute("""insert into public.documents (symbol, kind, period, label, filename, sha256, pages, pages_kept,
-                                                  chunks, uploaded_by, source, source_url)
-                     values (%s, %s, %s::date, %s, %s, %s, %s::int, %s::int, %s::int, %s::uuid, %s, %s) returning id""",
+                                                  chunks, uploaded_by, source, source_url, added_from)
+                     values (%s, %s, %s::date, %s, %s, %s, %s::int, %s::int, %s::int, %s::uuid, %s, %s, %s) returning id""",
                   (symbol, kind, period.isoformat(), label, filename, sha, len(pages), len(keep), len(chunks),
-                   uploaded_by, source, source_url))
+                   uploaded_by, source, source_url, added_from))
         doc_id = c.fetchone()[0]
         c.execute(
             """insert into public.doc_chunks (document_id, symbol, page, chunk_index, content, embedding)

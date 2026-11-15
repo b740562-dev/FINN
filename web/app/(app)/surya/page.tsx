@@ -402,7 +402,7 @@ export default function Surya() {
           <div className="sheet sy-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="grab" />
             <b className="sy-sheet-t">Add a report for Surya to read</b>
-            <DocUploadForm guest={guest} initial={upload} onCancel={() => setUpload(false)} onUploaded={uploaded} />
+            <DocUploadForm guest={guest} initial={upload} origin="surya" onCancel={() => setUpload(false)} onUploaded={uploaded} />
           </div>
         </div>
       )}

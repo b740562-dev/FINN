@@ -38,8 +38,10 @@ export type Uploaded = { status: string; label?: string; job_id?: number; symbol
  *  except the PDF itself. */
 export type Preset = { symbol: string; name: string; kind?: string; period?: string; url?: string };
 
-export function DocUploadForm({ guest, initial, onCancel, onUploaded }: {
+export function DocUploadForm({ guest, initial, origin, onCancel, onUploaded }: {
   guest: boolean;
+  /** Where the upload starts; only uploads from the You page list under Your documents. */
+  origin: "you" | "research" | "surya";
   initial?: Preset | null;
   onCancel: () => void;
   onUploaded: (r: Uploaded) => void;
@@ -85,6 +87,7 @@ export function DocUploadForm({ guest, initial, onCancel, onUploaded }: {
     fd.set("kind", kind);
     fd.set("period", kind === "annual_report" ? `${fy}-03-31` : `${month}-01`);
     fd.set("source", source);
+    fd.set("added_from", origin);
     if (link.trim()) fd.set("source_url", link.trim());
     try {
       const r = await api<{ status: string; label?: string; job_id?: number }>(`/research/${co.symbol}/documents`, { method: "POST", body: fd });
@@ -230,7 +233,7 @@ export function MyDocuments({ guest }: { guest: boolean }) {
       </div>
 
       {open && (
-        <DocUploadForm guest={guest} onCancel={() => { setOpen(false); setMsg(null); }}
+        <DocUploadForm guest={guest} origin="you" onCancel={() => { setOpen(false); setMsg(null); }}
           onUploaded={(r) => {
             setMsg(r.status === "duplicate"
               ? { ok: true, text: `Already in FINN's library${r.label ? ` (${r.symbol} ${r.label})` : ""}. Nothing new to read.` }

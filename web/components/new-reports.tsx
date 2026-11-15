@@ -69,7 +69,7 @@ export function NewReports() {
             <div className="grab" />
             <b className="sy-sheet-t">Add {adding.symbol} {need.find((i) => i.url === adding.url)?.label}</b>
             <p className="nr-steps">1. <a href={adding.url} target="_blank" rel="noreferrer">Open the original ↗</a> and save the PDF. 2. Pick it below. Everything else is filled in.</p>
-            <DocUploadForm guest={guest} initial={adding} onCancel={() => setAdding(null)}
+            <DocUploadForm guest={guest} initial={adding} origin="research" onCancel={() => setAdding(null)}
               onUploaded={(r) => {
                 setAdding(null);
                 setNote(r.status === "duplicate" ? `${r.symbol}: already in the library.` : `Reading ${r.symbol}'s report. Its research updates when done.`);

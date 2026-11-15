@@ -112,11 +112,11 @@ def _rebuild(sym: str) -> None:
 
 
 def _run_ingest(job_id: int, sym: str, data: bytes, kind: str, period: date, filename: str, user_id: str,
-                source: str | None = None, source_url: str | None = None) -> None:
+                source: str | None = None, source_url: str | None = None, added_from: str | None = None) -> None:
     """Background worker: read -> index -> rebuild the document-based sections."""
     try:
         res = ingest_pdf(sym, data, kind, period, filename, uploaded_by=user_id, source=source, source_url=source_url,
-                         progress=lambda stage, info: _job_update(job_id, stage, info or None))
+                         added_from=added_from, progress=lambda stage, info: _job_update(job_id, stage, info or None))
         from finn.pull.autodocs import announce, mark_uploaded
         mark_uploaded(sym, kind, period, res["document_id"])     # settles a pending "new report", if any
         if res["status"] == "duplicate":
@@ -136,7 +136,7 @@ def _run_ingest(job_id: int, sym: str, data: bytes, kind: str, period: date, fil
 @router.post("/{symbol}/documents", status_code=202)
 async def upload(symbol: str, background: BackgroundTasks, file: UploadFile = File(...), kind: str = Form(...),
                  period: str = Form(...), source: str = Form("other"), source_url: str = Form(""),
-                 user: User = Depends(current_user)):
+                 added_from: str = Form(""), user: User = Depends(current_user)):
     """Accepts a PDF and processes it in the background. Documents are shared by
     every user, so guests can't add them (one bad upload would change everyone's
     research); the demo set is pre-loaded."""
@@ -162,18 +162,24 @@ async def upload(symbol: str, background: BackgroundTasks, file: UploadFile = Fi
     if not data.startswith(b"%PDF"):
         raise HTTPException(422, "Not a PDF")
 
+    origin = added_from if added_from in ("you", "research", "surya") else None
     sha = hashlib.sha256(data).hexdigest()
     with cursor() as c:
         c.execute("select id, label from public.documents where sha256 = %s", (sha,))
         dup = c.fetchone()
         if dup:  # instant answer, no job needed
+            # The uploader adding it again puts it back on their list (from the You page, it lists there).
+            c.execute("""update public.documents set hidden_from_uploader_at = null,
+                           added_from = case when %s = 'you' then 'you' else added_from end
+                         where id = %s and uploaded_by = %s::uuid""", (origin, dup[0], user.id))
             return {"status": "duplicate", "document_id": dup[0], "label": dup[1]}
-        c.execute("""insert into public.ingest_jobs (symbol, filename, kind, period, created_by, source, source_url)
-                     values (%s, %s, %s, %s::date, %s::uuid, %s, %s) returning id""",
-                  (sym, file.filename or "", kind, p.isoformat(), user.id, source, source_url or None))
+        c.execute("""insert into public.ingest_jobs (symbol, filename, kind, period, created_by, source, source_url,
+                                                     added_from)
+                     values (%s, %s, %s, %s::date, %s::uuid, %s, %s, %s) returning id""",
+                  (sym, file.filename or "", kind, p.isoformat(), user.id, source, source_url or None, origin))
         job_id = c.fetchone()[0]
     background.add_task(_run_ingest, job_id, sym, data, kind, p, file.filename or "", user.id, source,
-                        source_url or None)
+                        source_url or None, origin)
     return {"status": "queued", "job_id": job_id}
 
 
@@ -232,13 +238,20 @@ def usage(days: int = 7, user: User = Depends(current_user)):
 
 @docs_router.get("/mine")
 def my_documents(user: User = Depends(current_user)):
-    """Documents this user uploaded, plus uploads still being processed (or that
-    failed in the last day), newest first."""
+    """Documents this user added on the You page, plus those uploads still being
+    processed (or that failed in the last day), newest first. Reports added from
+    Research -> New reports or from Surya aren't listed here; they're in everyone's
+    research all the same. (Older uploads have no recorded origin: one whose link
+    is a listed new report's link came from Research.)"""
     with cursor(commit=False) as c:
         c.execute("""select d.id, d.symbol, co.name, d.kind, d.period, d.label, d.filename, d.source, d.source_url,
                             d.pages, d.pages_kept, d.chunks, d.ingested_at
                      from public.documents d left join public.companies co on co.symbol = d.symbol
                      where d.uploaded_by = %s::uuid and d.hidden_from_uploader_at is null
+                       and (d.added_from = 'you'
+                            or (d.added_from is null and not exists (
+                                  select 1 from public.report_candidates rc
+                                  where rc.symbol = d.symbol and rc.url = d.source_url)))
                      order by d.ingested_at desc limit 100""", (user.id,))
         docs = [{"id": i, "symbol": sym, "company": name, "kind": k, "period": str(p) if p else None, "label": lb,
                  "filename": fn, "source": src, "source_label": DOC_SOURCES.get(src or ""), "source_url": url,
@@ -248,6 +261,7 @@ def my_documents(user: User = Depends(current_user)):
                             (updated_at < now() - make_interval(mins => %s::int)) as stale
                      from public.ingest_jobs
                      where created_by = %s::uuid and created_at > now() - interval '1 day'
+                       and (added_from is null or added_from = 'you')
                        and status in ('queued', 'reading', 'indexing', 'analysing', 'failed')
                      order by created_at desc limit 20""", (STALE_JOB_MIN, user.id))
         jobs = []
