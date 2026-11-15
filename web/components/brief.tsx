@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Digest, Me } from "@/lib/types";
-
-function spokenNumber(n: number): string {
-  const a = Math.abs(n);
-  if (a >= 1e7) return `${(a / 1e7).toFixed(1)} crore`;
-  if (a >= 1e5) return `${(a / 1e5).toFixed(1)} lakh`;
-  return `${Math.round(a).toLocaleString("en-IN")}`;
-}
+import { rupeesWords, speakable } from "@/lib/speech";
 
 function spokenPct(n: number | null | undefined): string {
   if (n === null || n === undefined) return "";
@@ -20,12 +14,13 @@ export function briefScript(me: Me | null, d: Digest | null, windowLabel: string
   const parts: string[] = [];
   const hr = new Date().getHours();
   parts.push(hr < 12 ? "Good morning." : hr < 17 ? "Good afternoon." : "Good evening.");
-  if (me) {
-    parts.push(`Your portfolio is worth ${spokenNumber(me.totals.value)} rupees, ${spokenPct(me.totals.day_pct)} on the day.`);
+  if (me && me.totals.value > 0) {
+    const day = spokenPct(me.totals.day_pct);
+    parts.push(`Your portfolio is worth ${rupeesWords(me.totals.value)}${day ? `, ${day} on the day` : ""}.`);
   }
   if (!d || d.matters.length === 0) {
     parts.push(`Nothing material across your holdings in the ${windowLabel}.`);
-    return parts.join(" ");
+    return speakable(parts.join(" "));
   }
   parts.push(`${d.matters.length} thing${d.matters.length === 1 ? "" : "s"} matter in the ${windowLabel}.`);
   d.matters.slice(0, 4).forEach((e, i) => {
@@ -38,15 +33,17 @@ export function briefScript(me: Me | null, d: Digest | null, windowLabel: string
       if (card.flags?.length) parts.push(`Note: ${card.flags[0]}.`);
     } else if (e.category === "management_change" && e.enrichment?.bios?.[0]?.status === "ready") {
       const b = e.enrichment.bios[0];
-      parts.push(`${lead}, at ${e.company}, ${b.name} takes over as ${b.role}. ${b.headline ?? ""}`);
+      const head = (b.headline ?? "").trim();
+      parts.push(`${lead}, at ${e.company}, ${b.name} takes over as ${b.role}.${head ? ` ${/[.!?]$/.test(head) ? head : head + "."}` : ""}`);
     } else {
-      parts.push(`${lead}, ${e.company}: ${(e.one_liner || e.headline).replace(/₹/g, "rupees ")}`);
+      const line = (e.one_liner || e.headline).trim();
+      parts.push(`${lead}, ${e.company}: ${/[.!?]$/.test(line) ? line : line + "."}`);
     }
   });
   const rest = d.matters.length - 4;
   if (rest > 0) parts.push(`${rest} more on your screen.`);
   if (d.counts.routine_filings) parts.push(`${d.counts.routine_filings} routine filings were set aside.`);
-  return parts.join(" ");
+  return speakable(parts.join(" "));
 }
 
 export function BriefButton({ script }: { script: string }) {
