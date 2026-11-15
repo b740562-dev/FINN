@@ -28,7 +28,7 @@ export default function Terms() {
       </ul>
 
       <h2>4. Documents you upload</h2>
-      <p>Only upload public company documents (annual reports, concall transcripts, investor presentations) that you&apos;re allowed to share. Uploads join FINN&apos;s shared library and are used to build research for everyone. We may remove any upload that is inaccurate, private or inappropriate.</p>
+      <p>Only upload public company documents (annual reports, concall transcripts, investor presentations) that you&apos;re allowed to share. Documents you add on the You page are used only for your own account. Reports added from Research for a listed company report join FINN&apos;s shared library and are used to build research for everyone. We may remove any upload that is inaccurate, private or inappropriate.</p>
 
       <h2>5. Fair use</h2>
       <p>Don&apos;t misuse FINN: no automated scraping, overloading the service, attempting to access other users&apos; data, or using it for anything unlawful. We may suspend accounts that do.</p>

@@ -21,12 +21,12 @@ SCHEMA = {
 }
 
 
-def ask(symbol: str, question: str) -> dict:
+def ask(symbol: str, question: str, user_id: str | None = None) -> dict:
     question = question.strip()[:500]
     f = _fund(symbol)
     facts = number_facts(symbol)
     nrefs = {f"n{i + 1}": x for i, x in enumerate(facts)}
-    chunks = search(symbol, question, k=8)
+    chunks = search(symbol, question, k=8, user_id=user_id)
     block, crefs = chunk_block(chunks)
     prompt = (f"Company: {f['name']}.\n{PRIMARY_ONLY}\n\nNUMBER FACTS\n"
               + "\n".join(f"[{k}] {v}" for k, v in nrefs.items())

@@ -127,7 +127,7 @@ _STOPQ = re.compile(r"\b(what|did|does|do|is|are|was|were|the|a|an|of|in|on|for|
                     re.I)
 
 
-def _retrieve(sym: str, name: str, message: str, docs: list[dict], k: int = 6):
+def _retrieve(sym: str, name: str, message: str, docs: list[dict], k: int = 6, user_id: str | None = None):
     """Topic-focused retrieval: strip the company's name and question words from
     the query, narrow to the latest concall / annual report when asked, and drop
     exchange cover letters and notice boilerplate that otherwise win on vague asks."""
@@ -144,7 +144,7 @@ def _retrieve(sym: str, name: str, message: str, docs: list[dict], k: int = 6):
         same = [d for d in docs if d["kind"] == kind]
         if same:
             ids = [max(same, key=lambda d: d["period"] or "")["id"]]
-    pool = search(sym, topic, k=k * 3, kind=kind, document_ids=ids)
+    pool = search(sym, topic, k=k * 3, kind=kind, document_ids=ids, user_id=user_id)
     good = [ch for ch in pool if not _BOILER.search(ch.content[:600]) and len(ch.content) > 200]
     return (good or pool)[:k]
 
@@ -182,7 +182,8 @@ def _missing_text(companies: list[dict], report: str | None) -> str:
             "with the 📎 button and I’ll analyse it for you.")
 
 
-def chat(message: str, history: list[dict] | None = None, symbols: list[str] | None = None) -> dict:
+def chat(message: str, history: list[dict] | None = None, symbols: list[str] | None = None,
+         user_id: str | None = None) -> dict:
     message = message.strip()[:800]
     history = [h for h in (history or []) if h.get("role") in ("user", "assistant")][-6:]
 
@@ -197,7 +198,7 @@ def chat(message: str, history: list[dict] | None = None, symbols: list[str] | N
     nsym: dict[str, str] = {}
     for co in companies:
         sym = co["symbol"]
-        docs = documents(sym)
+        docs = documents(sym, user_id)
         labels = sorted({d["label"] for d in docs if d.get("label")})
         inventory.append({"symbol": sym, "name": co["name"], "documents": labels})
         try:
@@ -208,7 +209,7 @@ def chat(message: str, history: list[dict] | None = None, symbols: list[str] | N
         for i, f in enumerate(facts):
             nrefs[f"n{start + i + 1}"] = f"{co['name']}: {f}"
             nsym[f"n{start + i + 1}"] = sym
-        for ch in (_retrieve(sym, co["name"], message, docs) if docs else []):
+        for ch in (_retrieve(sym, co["name"], message, docs, user_id=user_id) if docs else []):
             crefs[f"c{len(crefs) + 1}"] = ch          # ids unique across companies
         gstart = len(grefs)
         if docs and _GUIDANCE.search(message):

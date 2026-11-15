@@ -77,7 +77,8 @@ def _portfolio(uid: str) -> dict:
                select h.symbol, co.name, co.sector, h.quantity, h.weight,
                       max(close) filter (where rn = 1), max(close) filter (where rn = 2),
                       max(date) filter (where rn = 1),
-                      (select count(*) from public.documents d where d.symbol = h.symbol)
+                      (select count(*) from public.documents d where d.symbol = h.symbol
+                         and (d.private_to is null or d.private_to = h.user_id))
                from public.holdings h
                join public.companies co using (symbol)
                left join last2 l on l.symbol = h.symbol and l.rn <= 2

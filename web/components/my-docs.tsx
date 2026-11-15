@@ -206,7 +206,7 @@ export function MyDocuments({ guest }: { guest: boolean }) {
     try {
       await api(`/documents/${id}`, { method: "DELETE" });
       await load();
-      setMsg({ ok: true, text: "Removed from your list. The report stays in FINN's research, so Surya and everyone's research keep using it." });
+      setMsg({ ok: true, text: "Removed. FINN no longer uses it in your answers." });
     } catch (er) {
       setMsg({ ok: false, text: (er as Error).message });
     }
@@ -227,7 +227,7 @@ export function MyDocuments({ guest }: { guest: boolean }) {
       <div className="md-head">
         <div>
           <b>Your documents</b>
-          <small>{docs.length ? `${docs.length} added` : "Annual reports, concalls, presentations"}</small>
+          <small>{docs.length ? `${docs.length} added · private to you` : "Private to you: only your Surya and research questions use them"}</small>
         </div>
         {!open && <button className="btn primary sm" onClick={() => setOpen(true)}>＋ Add</button>}
       </div>
@@ -237,7 +237,7 @@ export function MyDocuments({ guest }: { guest: boolean }) {
           onUploaded={(r) => {
             setMsg(r.status === "duplicate"
               ? { ok: true, text: `Already in FINN's library${r.label ? ` (${r.symbol} ${r.label})` : ""}. Nothing new to read.` }
-              : { ok: true, text: `Reading ${r.symbol}'s document. Its research updates when it's done.` });
+              : { ok: true, text: `Reading ${r.symbol}'s document. It stays private: only your Surya and research questions use it.` });
             load();
           }} />
       )}

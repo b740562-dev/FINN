@@ -112,11 +112,18 @@ def _rebuild(sym: str) -> None:
 
 
 def _run_ingest(job_id: int, sym: str, data: bytes, kind: str, period: date, filename: str, user_id: str,
-                source: str | None = None, source_url: str | None = None, added_from: str | None = None) -> None:
-    """Background worker: read -> index -> rebuild the document-based sections."""
+                source: str | None = None, source_url: str | None = None, added_from: str | None = None,
+                private: bool = False) -> None:
+    """Background worker: read -> index -> rebuild the document-based sections.
+    A private upload is only indexed: it never changes the shared research, the
+    feed or the New reports list."""
     try:
         res = ingest_pdf(sym, data, kind, period, filename, uploaded_by=user_id, source=source, source_url=source_url,
-                         added_from=added_from, progress=lambda stage, info: _job_update(job_id, stage, info or None))
+                         added_from=added_from, private_to=user_id if private else None,
+                         progress=lambda stage, info: _job_update(job_id, stage, info or None))
+        if private:
+            _job_update(job_id, "duplicate" if res["status"] == "duplicate" else "done", res)
+            return
         from finn.pull.autodocs import announce, mark_uploaded
         mark_uploaded(sym, kind, period, res["document_id"])     # settles a pending "new report", if any
         if res["status"] == "duplicate":
@@ -165,13 +172,25 @@ async def upload(symbol: str, background: BackgroundTasks, file: UploadFile = Fi
     origin = added_from if added_from in ("you", "research", "surya") else None
     sha = hashlib.sha256(data).hexdigest()
     with cursor() as c:
-        c.execute("select id, label from public.documents where sha256 = %s", (sha,))
+        # Shared only when added from Research (or Surya) for a report the exchange listing names;
+        # anything added on the You page, or for an unlisted report, stays private to the uploader.
+        c.execute("select 1 from public.report_candidates where symbol = %s and url = %s",
+                  (sym, source_url or None))
+        private = origin == "you" or c.fetchone() is None
+        c.execute("select id, label, private_to::text from public.documents where sha256 = %s", (sha,))
         dup = c.fetchone()
         if dup:  # instant answer, no job needed
             # The uploader adding it again puts it back on their list (from the You page, it lists there).
             c.execute("""update public.documents set hidden_from_uploader_at = null,
                            added_from = case when %s = 'you' then 'you' else added_from end
                          where id = %s and uploaded_by = %s::uuid""", (origin, dup[0], user.id))
+            if dup[2] and not private:
+                # The same file, now added for a listed report: it becomes shared research.
+                c.execute("update public.documents set private_to = null where id = %s", (dup[0],))
+                from finn.pull.autodocs import mark_uploaded
+                mark_uploaded(sym, kind, p, dup[0])
+                S.invalidate(sym)
+                background.add_task(_rebuild, sym)
             return {"status": "duplicate", "document_id": dup[0], "label": dup[1]}
         c.execute("""insert into public.ingest_jobs (symbol, filename, kind, period, created_by, source, source_url,
                                                      added_from)
@@ -179,8 +198,8 @@ async def upload(symbol: str, background: BackgroundTasks, file: UploadFile = Fi
                   (sym, file.filename or "", kind, p.isoformat(), user.id, source, source_url or None, origin))
         job_id = c.fetchone()[0]
     background.add_task(_run_ingest, job_id, sym, data, kind, p, file.filename or "", user.id, source,
-                        source_url or None, origin)
-    return {"status": "queued", "job_id": job_id}
+                        source_url or None, origin, private)
+    return {"status": "queued", "job_id": job_id, "private": private}
 
 
 @router.get("/{symbol}/jobs/{job_id}")
@@ -210,7 +229,7 @@ class AskReq(BaseModel):
 def ask(symbol: str, req: AskReq, user: User = Depends(current_user)):
     sym = _sym(symbol)
     _require(sym)
-    return _redact(ask_fn(sym, req.question), user)
+    return _redact(ask_fn(sym, req.question, user_id=user.id), user)
 
 
 @usage_router.get("/usage")
@@ -292,11 +311,16 @@ def remove_document(doc_id: int, background: BackgroundTasks, purge: bool = Fals
     to delete a bad upload outright (its passages leave the index and the
     company's research is rebuilt without it)."""
     with cursor() as c:
-        c.execute("select symbol, uploaded_by::text from public.documents where id = %s", (doc_id,))
+        c.execute("select symbol, uploaded_by::text, private_to::text from public.documents where id = %s", (doc_id,))
         row = c.fetchone()
         if not row:
             raise HTTPException(404, "No such document")
-        sym, owner = row
+        sym, owner, private_to = row
+        if private_to:
+            if private_to != user.id:
+                raise HTTPException(404, "No such document")
+            c.execute("delete from public.documents where id = %s", (doc_id,))   # only ever used by this user
+            return {"status": "deleted", "id": doc_id, "symbol": sym}
         if purge:
             if not user.is_admin:
                 raise HTTPException(403, "Only admins can delete a document from the library")

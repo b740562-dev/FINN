@@ -49,7 +49,9 @@ def embed_query(q: str) -> list[float]:
 
 
 def search(symbol: str, query: str, *, k: int = 8, kind: str | None = None,
-           document_ids: list[int] | None = None, pool: int = 30) -> list[Chunk]:
+           document_ids: list[int] | None = None, pool: int = 30, user_id: str | None = None) -> list[Chunk]:
+    """Shared documents only, unless user_id is given: then that user's private
+    uploads are searched too."""
     # If the embedding API is rate-limited (e.g. while a large report is being indexed
     # on the free tier), degrade to keyword search instead of failing the user's question.
     try:
@@ -57,8 +59,9 @@ def search(symbol: str, query: str, *, k: int = 8, kind: str | None = None,
     except Exception:
         vec = None
     fts_query = query if vec else " or ".join(w for w in re.findall(r"[A-Za-z0-9]{3,}", query)) or query
-    filt = " and (%s::text is null or d.kind = %s::text) and (%s::bigint[] is null or d.id = any(%s::bigint[]))"
-    fargs = (kind, kind, document_ids, document_ids)
+    filt = (" and (%s::text is null or d.kind = %s::text) and (%s::bigint[] is null or d.id = any(%s::bigint[]))"
+            " and (d.private_to is null or d.private_to = %s::uuid)")
+    fargs = (kind, kind, document_ids, document_ids, user_id)
     with cursor(commit=False) as c:
         vec_ids = []
         if vec:
@@ -92,10 +95,12 @@ def search(symbol: str, query: str, *, k: int = 8, kind: str | None = None,
                   page=rows[i][5], content=rows[i][6], score=round(scores[i], 5)) for i in top if i in rows]
 
 
-def documents(symbol: str) -> list[dict]:
+def documents(symbol: str, user_id: str | None = None) -> list[dict]:
+    """Shared documents, plus user_id's private uploads when given."""
     with cursor(commit=False) as c:
         c.execute("""select id, kind, period, label, filename, sha256, pages, pages_kept, chunks, ingested_at
-                     from public.documents where symbol = %s order by period desc""", (symbol,))
+                     from public.documents where symbol = %s and (private_to is null or private_to = %s::uuid)
+                     order by period desc""", (symbol, user_id))
         return [{"id": i, "kind": k, "period": str(p) if p else None, "label": lb, "filename": fn, "sha256": sha,
                  "pages": pg, "pages_kept": pk, "chunks": ch, "ingested_at": ts.isoformat()}
                 for i, k, p, lb, fn, sha, pg, pk, ch, ts in c.fetchall()]

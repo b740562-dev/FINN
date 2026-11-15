@@ -45,7 +45,7 @@ def _own_thread(c, thread_id: int, user: User) -> None:
 
 @router.post("")
 def send(req: ChatReq, user: User = Depends(current_user)):
-    out = chat(req.message, [t.model_dump() for t in req.history], req.symbols)
+    out = chat(req.message, [t.model_dump() for t in req.history], req.symbols, user_id=user.id)
     if not user.is_admin:
         out["model"] = None
     out["thread_id"] = None

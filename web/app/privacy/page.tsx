@@ -30,11 +30,11 @@ export default function Privacy() {
       </ul>
 
       <h2>Where it lives</h2>
-      <p>Data is stored in a Supabase database (Mumbai region) protected by row-level security, so each account can only read its own data. The app is hosted on Vercel and Render. Reports you upload join FINN&apos;s shared library of public company documents.</p>
+      <p>Data is stored in a Supabase database (Mumbai region) protected by row-level security, so each account can only read its own data. The app is hosted on Vercel and Render. Reports you add on the You page stay private to your account; reports added from Research for a listed company report join FINN&apos;s shared library of public company documents.</p>
 
       <h2>Your choices</h2>
       <ul>
-        <li>Edit or clear your profile at any time under <i>Edit profile</i>, and take documents you uploaded off your list under <i>Your documents</i>. Uploaded reports are public company documents, so they stay in FINN&apos;s shared research.</li>
+        <li>Edit or clear your profile at any time under <i>Edit profile</i>, and delete documents you added under <i>Your documents</i>. Reports added from Research are public company documents, so they stay in FINN&apos;s shared research.</li>
         <li>To delete your account and everything linked to it, email <a href={`mailto:${CONTACT}`}>{CONTACT}</a> from the address you signed in with.</li>
       </ul>
 

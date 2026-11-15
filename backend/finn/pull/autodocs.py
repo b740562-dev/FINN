@@ -62,7 +62,7 @@ def record(symbol: str, page) -> int:
             c.execute("update public.companies set website = %s where symbol = %s", (page.website, symbol))
         for kind, period, url in found:
             # Already in the library? (uploaded by someone, or the demo set)
-            c.execute("""select id from public.documents where symbol = %s and kind = %s
+            c.execute("""select id from public.documents where symbol = %s and kind = %s and private_to is null
                            and date_trunc('month', period) = date_trunc('month', %s::date)
                          order by id desc limit 1""", (symbol, kind, period))
             doc = c.fetchone()

@@ -147,8 +147,9 @@ def _business_chunks(symbol: str, limit: int = 10) -> list[Chunk]:
     with cursor(commit=False) as c:
         c.execute("""select dc.id, dc.document_id, d.label, d.kind, d.period::text, dc.page, dc.content
                      from public.doc_chunks dc join public.documents d on d.id = dc.document_id
-                     where d.symbol = %s and d.kind = 'annual_report'
-                       and d.id = (select max(id) from public.documents where symbol = %s and kind = 'annual_report')""",
+                     where d.symbol = %s and d.kind = 'annual_report' and d.private_to is null
+                       and d.id = (select max(id) from public.documents where symbol = %s and kind = 'annual_report'
+                                   and private_to is null)""",
                   (symbol, symbol))
         rows = c.fetchall()
     scored = []
@@ -747,7 +748,7 @@ def inputs_hash(symbol: str, section: str) -> str:
         c.execute("select md5(tables::text) from public.fundamentals where symbol = %s", (symbol,))
         r = c.fetchone()
         c.execute("select coalesce(string_agg(sha256, ',' order by sha256), '') from public.documents "
-                  "where symbol = %s", (symbol,))
+                  "where symbol = %s and private_to is null", (symbol,))
         docs = c.fetchone()[0]
     return hashlib.sha256(f"{SECTION_VERSION.get(section, VERSION)}|{section}|{r[0] if r else ''}|{docs}".encode()).hexdigest()
 
