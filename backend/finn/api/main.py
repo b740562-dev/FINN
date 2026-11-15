@@ -83,7 +83,7 @@ def _portfolio(uid: str) -> dict:
                join public.companies co using (symbol)
                left join last2 l on l.symbol = h.symbol and l.rn <= 2
                where h.user_id = %s
-               group by h.symbol, co.name, co.sector, h.quantity, h.weight""",
+               group by h.user_id, h.symbol, co.name, co.sector, h.quantity, h.weight""",
             (uid, uid),
         )
         rows = c.fetchall()
